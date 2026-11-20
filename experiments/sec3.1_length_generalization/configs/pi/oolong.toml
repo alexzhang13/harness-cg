@@ -1,0 +1,121 @@
+# Fig. length-gen | Pi (with sub-agents) | OOLONG trec_coarse (32k -> 256k)
+
+output_dir = "outputs/length-gen/pi/oolong"
+max_steps = 150
+seq_len = 8192
+
+[model]
+name = "Qwen/Qwen3-30B-A3B-Instruct-2507"
+
+[wandb]
+project = "rlm-lengthgen"
+name = "lengthgen-oolong-trec-32k-to-256k-pi"
+shared = false
+
+[deployment]
+gpus_per_node = 8
+num_train_gpus = 4
+num_infer_gpus = 4
+
+[trainer]
+
+[trainer.model]
+fused_lm_head_token_chunk_size = "auto"
+optimization_dtype = "bfloat16"
+reduce_dtype = "bfloat16"
+
+[trainer.model.ac]
+mode = "full"
+freq = 1
+
+[trainer.model.lora]
+rank = 32
+alpha = 64
+dropout = 0.0
+target_modules = [
+    "q_proj", "k_proj", "v_proj", "o_proj",
+    "gate_proj", "up_proj", "down_proj",
+]
+
+[trainer.optim]
+lr = 5e-5
+
+[inference]
+gpu_memory_utilization = 0.80
+
+[inference.model]
+max_model_len = 65536
+enforce_eager = false
+
+[inference.parallel]
+tp = 4
+dp = 1
+
+[orchestrator]
+max_inflight_rollouts = 32
+use_renderer = false
+batch_size = 64
+rollouts_per_example = 4
+
+[[orchestrator.filters]]
+type = "gibberish"
+enforce = false
+
+[[orchestrator.filters]]
+type = "repetition"
+enforce = true
+window = 3000
+prob_threshold = 0.99
+
+[[orchestrator.filters]]
+type = "zero_advantage"
+enforce = false
+
+[orchestrator.train]
+max_retries = 2
+
+[orchestrator.train.sampling]
+temperature = 0.7
+max_completion_tokens = 4096
+extra_body = { enable_thinking = false, top_p = 0.8, top_k = 20, min_p = 0.0 }
+
+[[orchestrator.train.env]]
+id = "pi-oolong-v1"
+name = "oolong-trec-coarse-32k-train"
+ratio = 1.0
+
+[orchestrator.train.env.args]
+max_turns = 30
+dataset_name = "trec_coarse"
+min_ctx = 32768
+max_ctx = 32768
+exclude_numeric = false
+num_examples = -1
+seed = 42
+
+[orchestrator.eval]
+max_retries = 2
+interval = 10
+eval_base_model = true
+num_examples = 50
+rollouts_per_example = 1
+
+[orchestrator.eval.sampling]
+temperature = 0.7
+max_completion_tokens = 4096
+extra_body = { enable_thinking = false, top_p = 0.8, top_k = 20, min_p = 0.0 }
+
+[[orchestrator.eval.env]]
+id = "pi-oolong-v1"
+name = "oolong-trec-coarse-256k-eval"
+num_examples = 50
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+max_turns = 30
+dataset_name = "trec_coarse"
+min_ctx = 262144
+max_ctx = 262144
+exclude_numeric = false
+num_examples = 50
+seed = 42

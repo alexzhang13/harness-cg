@@ -1,0 +1,102 @@
+output_dir = "outputs/length-gen/pi/longbenchpro/seed0"
+max_steps = 150
+seq_len = 8192
+
+[model]
+name = "Qwen/Qwen3-30B-A3B-Instruct-2507"
+
+[wandb]
+project = "cg-length-gen-pi"
+name = "pi-longbenchpro-seed0"
+shared = false
+
+[deployment]
+gpus_per_node = 8
+num_train_gpus = 2
+num_infer_gpus = 6
+
+[trainer]
+
+[trainer.model]
+fused_lm_head_token_chunk_size = "auto"
+optimization_dtype = "bfloat16"
+reduce_dtype = "bfloat16"
+
+[trainer.model.ac]
+mode = "full"
+freq = 1
+
+[trainer.model.lora]
+rank = 32
+alpha = 64
+dropout = 0.0
+target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+[trainer.optim]
+lr = 5e-05
+
+[trainer.ckpt]
+weights_only = false
+skip_gather_master_weights = true
+interval = 10
+keep_last = 1
+
+[inference]
+gpu_memory_utilization = 0.8
+seed = 0
+
+[inference.model]
+max_model_len = 65536
+enforce_eager = false
+
+[inference.parallel]
+tp = 2
+dp = 3
+
+[orchestrator]
+max_inflight_rollouts = 32
+use_renderer = false
+batch_size = 64
+rollouts_per_example = 4
+seed = 0
+
+[[orchestrator.filters]]
+type = "gibberish"
+enforce = false
+
+[[orchestrator.filters]]
+type = "repetition"
+enforce = true
+window = 3000
+prob_threshold = 0.99
+
+[[orchestrator.filters]]
+type = "zero_advantage"
+enforce = false
+
+[orchestrator.train]
+max_retries = 2
+
+[orchestrator.train.sampling]
+temperature = 0.7
+max_completion_tokens = 4096
+extra_body = { enable_thinking = false, top_p = 0.8, top_k = 20, min_p = 0.0 }
+
+[[orchestrator.train.env]]
+id = "pi-longbenchpro-v1"
+name = "longbenchpro-en-32k-train"
+ratio = 1.0
+
+[orchestrator.train.env.args]
+max_turns = 30
+language = "English"
+token_length = "32k"
+thinking = false
+num_examples = -1
+seed = 42
+
+[orchestrator.ckpt]
+interval = 10
+
+[orchestrator.buffer]
+seed = 0

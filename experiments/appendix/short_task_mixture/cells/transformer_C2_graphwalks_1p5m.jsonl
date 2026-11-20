@@ -1,0 +1,1 @@
+{"label": "lg:GraphWalks-w1p5m", "task": "graphwalks", "args": {"split": "256k_to_1mil", "seed": 42}, "num_examples": 50}

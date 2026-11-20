@@ -1,0 +1,23 @@
+task = "adaleval"
+
+[eval]
+num_examples = 50
+rollouts_per_example = 1
+
+[eval.sampling]
+temperature = 0.7
+max_completion_tokens = 4096
+extra_body = { enable_thinking = false, top_p = 0.8, top_k = 20, min_p = 0.0 }
+
+[[eval.env]]
+id = "pi-ada-leval-v1"
+name = "adaleval-bestanswer-128k-eval"
+num_examples = 50
+rollouts_per_example = 1
+
+[eval.env.args]
+max_turns = 30
+task = "bestanswer"
+setting = "128k"
+num_examples = 50
+manifest_split = "eval"

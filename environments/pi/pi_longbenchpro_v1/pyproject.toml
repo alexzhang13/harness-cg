@@ -1,0 +1,24 @@
+[project]
+name = "pi-longbenchpro-v1"
+version = "0.1.0"
+description = "Pi baseline for LongBench-Pro (verifiers v1 vf.Pi)."
+requires-python = ">=3.11"
+dependencies = [
+    "rlm-train",
+    "verifiers>=0.1.11",
+    "longbenchpro-real",
+]
+
+[tool.uv.sources]
+rlm-train = { path = "../../..", editable = true }
+longbenchpro-real = { path = "../../real/longbenchpro", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pi_longbenchpro_v1"]
+
+[project.entry-points."verifiers.environments"]
+pi-longbenchpro-v1 = "pi_longbenchpro_v1:load_environment"

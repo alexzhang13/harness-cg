@@ -1,0 +1,17 @@
+{
+  "generator_version": 2,
+  "max_iterations": 8,
+  "budgets": {
+    "turns": 6,
+    "observation_chars": 8000,
+    "root_peak_tokens": 20000,
+    "root_total_tokens": 48000,
+    "sub_prompt_chars": 32000,
+    "sub_total_chars": 160000,
+    "sub_calls": 24
+  },
+  "fin": {"filing_kchars": [120, 220]},
+  "code": {"n_mod": [16, 24], "file_kchars": [12, 24]},
+  "game": {"rounds": [24, 40]},
+  "versions": {"n_files": 12, "file_chars": 12000}
+}

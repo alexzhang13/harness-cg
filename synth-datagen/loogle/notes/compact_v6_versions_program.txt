@@ -1,0 +1,45 @@
+Use the following compact source-processing program, adapting parameters to the actual question.
+Keep the corpus and complete reader replies in Python variables. Use real sub-calls to interpret the source and
+extract semantic facts; compute aggregates in Python. Each block should do substantial work and print only compact
+coverage/results. Submit as soon as the result is computed. No ceremonial extra verification or submission turn.
+
+EXECUTION FORMAT: this harness executes only fenced Python blocks whose opening line is exactly ```repl.
+Write one such block per response. XML tool calls are not executable here. All imports below are standard library;
+there is no repository helper to import. Define/use helpers together or in a block that succeeds. Copy the actual
+question and options into TASK; the placeholder below is not the task. Do not print raw source or full reader replies.
+The skeleton is a method, not a source of answer values. All factual values must come from context or reader output.
+
+Block 1: a bounded reader call compiles the task. Its returned fields must drive later computation.
+```repl
+import json, re
+TASK = 'COPY THE ACTUAL QUESTION AND OPTIONS HERE'
+raw = llm_query("Compile TASK into one JSON object, no prose, with family and params. Do not solve it.\nfamily=finance: params={kind: trend|stable|rank|maxmin|count|hilo, companies:[exact company names, without list numbers],\nyears:[all requested fiscal years as integers], metric:exact metric identifier in question, numbered:boolean,\ndirection:highest|lowest (hilo only), target:exact company (rank only), threshold:string (count only)}.\ntrend means the largest year-over-year change within ONE company across years; stable means least volatility\nacross years; maxmin means the difference of maximum and minimum ACROSS companies in ONE fiscal year.\nrank orders companies at one year; count counts companies exceeding a threshold at one year; hilo selects an\nextreme company at one year. Exclude '(%)' or other unit annotations from the metric identifier.\nnumbered means whether the TASK's company list has explicit numbers.\nfamily=code: params={kind:cannot|pair|vc, K:node-depth integer, opts:[[letter,fully-qualified caller,fully-qualified callee],...]};\nfor cannot every callee is the question's target; for version-control use kind=vc only.\nfamily=game: params={kind:map|plant|defuse|site|rule, opts:[[letter,exact option text],...], n:reference round integer if rule}.\nCopy identifiers, company names and options exactly; ignore the misleading Crafter label on shooter logs.\nCode has four options; game may have two to eight. Return a JSON object only." + '\nTASK:\n' + TASK + '\nSOURCE SAMPLE:\n' + context[:2000])
+card = json.loads(raw[raw.find('{'):raw.rfind('}')+1])
+Q = card['params']
+print(json.dumps(card))
+```
+Block 2: after the card identifies version comparison (kind=vc), diff complete files and submit.
+```repl
+assert Q['kind'] == 'vc'
+
+import re, json
+text = re.sub(r"</(PREV|CURR)_VERSION>", "", context)
+i, j = text.find("<PREV_VERSION>"), text.find("<CURR_VERSION>")
+def files_of(sec):
+    ms = list(re.finditer(r"<File>: ?([^\n]*)\n", sec))
+    out = {}
+    for k, m in enumerate(ms):
+        end = ms[k + 1].start() if k + 1 < len(ms) else len(sec)
+        out[m.group(1).strip()] = sec[m.end():end]
+    return out
+prev = files_of(text[i + len("<PREV_VERSION>"):j])
+curr = files_of(text[j + len("<CURR_VERSION>"):])
+added, deleted = sorted(set(curr) - set(prev)), sorted(set(prev) - set(curr))
+modified = sorted(p for p in set(prev) & set(curr) if prev[p].rstrip() != curr[p].rstrip())
+print(len(prev), "files before,", len(curr), "after | added", added, "| deleted", deleted, "| modified", modified)
+changed = sorted(set(added) | set(deleted) | set(modified))
+answer["content"] = "The changed files are：" + json.dumps(changed)
+answer["ready"] = True
+```
+
+Stop after at most one targeted repair. Total REPL output <=8000 characters. Aim for 2-4 root turns.

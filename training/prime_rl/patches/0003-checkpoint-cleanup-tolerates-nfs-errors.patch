@@ -1,0 +1,15 @@
+diff --git a/src/prime_rl/trainer/utils.py b/src/prime_rl/trainer/utils.py
+index 720af8da0..f57131eb5 100644
+--- a/src/prime_rl/trainer/utils.py
++++ b/src/prime_rl/trainer/utils.py
+@@ -458,4 +458,9 @@ def maybe_clean(path: Path, step: int, async_level: int, interval_to_keep: int |
+     logger.debug(f"Considering deleting path {candidate_path_to_delete}")
+     if not keep:
+         logger.debug(f"Removing path {candidate_path_to_delete}")
+-        shutil.rmtree(candidate_path_to_delete, ignore_errors=True)
++        # rmtree(ignore_errors=True) does not cover the os.fstat() samestat check, which raises ESTALE on NFS; one rank dying here
++        # leaves the others stuck in a barrier forever (the "NCCL hang" at steps 41/65/117/244). Cleanup is best-effort.
++        try:
++            shutil.rmtree(candidate_path_to_delete, ignore_errors=True)
++        except OSError as e:
++            logger.warning(f"Could not remove {candidate_path_to_delete} ({e!r}); leaving it")

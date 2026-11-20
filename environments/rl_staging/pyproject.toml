@@ -1,0 +1,38 @@
+[project]
+name = "rl-staging"
+version = "0.1.0"
+description = "RL wrappers (rlstage-*): unhinted, argument-pinned forms of the 8 synthetic envs + the OOLONG-real validation env"
+requires-python = ">=3.10"
+dependencies = ["verifiers", "rlm-train", "synth-common", "browsecomp-plus-synth", "ctcbench-synth", "expertlongbench-synth",
+                "trick-synth", "corpusqa-synth", "loogle-v2-synth", "tabletop-synth", "longreason-expanded", "oolong-real-synth"]
+
+[tool.uv.sources]
+rlm-train = { path = "../..", editable = true }
+synth-common = { path = "../synthetic/synth_common", editable = true }
+browsecomp-plus-synth = { path = "../synthetic/browsecomp_plus", editable = true }
+ctcbench-synth = { path = "../synthetic/ctcbench", editable = true }
+expertlongbench-synth = { path = "../synthetic/expertlongbench", editable = true }
+trick-synth = { path = "../synthetic/trick", editable = true }
+corpusqa-synth = { path = "../synthetic/corpusqa", editable = true }
+loogle-v2-synth = { path = "../synthetic/loogle_v2", editable = true }
+tabletop-synth = { path = "../synthetic/tabletop_synth", editable = true }
+longreason-expanded = { path = "../synthetic/longreason", editable = true }
+oolong-real-synth = { path = "../synthetic/oolong_real", editable = true }
+
+[project.entry-points."verifiers.environments"]
+rlstage-obliq = "rl_staging:load_obliq"
+rlstage-elb = "rl_staging:load_elb"
+rlstage-oolong = "rl_staging:load_oolong"
+rlstage-loogle = "rl_staging:load_loogle"
+rlstage-bcp = "rl_staging:load_bcp"
+rlstage-longreason = "rl_staging:load_longreason"
+rlstage-corpusqa = "rl_staging:load_corpusqa"
+rlstage-ctc = "rl_staging:load_ctc"
+rlstage-oolong-real-val = "rl_staging:load_oolong_real_val"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["rl_staging", "rlstage_bcp", "rlstage_ctc", "rlstage_elb", "rlstage_corpusqa", "rlstage_loogle", "rlstage_oolong", "rlstage_longreason", "rlstage_obliq", "rlstage_oolong_real_val"]

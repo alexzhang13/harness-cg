@@ -1,0 +1,1 @@
+{"label": "lg:MRCRv2-1m-2m-fp8kv", "task": "mrcr", "args": {"needle_count": 8, "context_range": "1m-2m", "seed": 42}, "num_examples": 50}

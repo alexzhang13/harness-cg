@@ -1,0 +1,56 @@
+{
+  "generator_version": 2,
+  "max_iterations": 8,
+  "budgets": {
+    "turns": 6,
+    "observation_chars": 8000,
+    "root_peak_tokens": 20000,
+    "root_total_tokens": 48000,
+    "sub_prompt_chars": 32000,
+    "sub_total_chars": 160000,
+    "sub_calls": 24
+  },
+  "fin": {
+    "filing_kchars": [
+      120,
+      220
+    ],
+    "trend_disagree": 1.0,
+    "trend_prior_trap": 0.8,
+    "kinds": {
+      "trend": 4,
+      "maxmin": 4,
+      "rank": 2,
+      "stable": 2,
+      "count": 1,
+      "hilo": 1
+    }
+  },
+  "code": {
+    "n_mod": [
+      16,
+      24
+    ],
+    "file_kchars": [
+      12,
+      24
+    ]
+  },
+  "game": {
+    "rounds": [
+      24,
+      40
+    ],
+    "kinds": {
+      "plant": 4,
+      "map": 3,
+      "rule": 2,
+      "defuse": 1,
+      "site": 1
+    }
+  },
+  "versions": {
+    "n_files": 12,
+    "file_chars": 12000
+  }
+}

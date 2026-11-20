@@ -1,0 +1,24 @@
+task = "longbenchpro"
+
+[eval]
+num_examples = 115
+rollouts_per_example = 1
+
+[eval.sampling]
+temperature = 0.7
+max_completion_tokens = 4096
+extra_body = { enable_thinking = false, top_p = 0.8, top_k = 20, min_p = 0.0 }
+
+[[eval.env]]
+id = "pi-longbenchpro-v1"
+name = "longbenchpro-en-256k-eval"
+num_examples = 115
+rollouts_per_example = 1
+
+[eval.env.args]
+max_turns = 30
+language = "English"
+token_length = "256k"
+thinking = false
+num_examples = -1
+seed = 42

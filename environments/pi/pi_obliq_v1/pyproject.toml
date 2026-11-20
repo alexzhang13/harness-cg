@@ -1,0 +1,24 @@
+[project]
+name = "pi-obliq-v1"
+version = "0.1.0"
+description = "Pi baseline for OBLIQ-Bench ranking (verifiers v1 vf.Pi)."
+requires-python = ">=3.11"
+dependencies = [
+    "rlm-train",
+    "verifiers>=0.1.11",
+    "obliq-bench-real",
+]
+
+[tool.uv.sources]
+rlm-train = { path = "../../..", editable = true }
+obliq-bench-real = { path = "../../real/obliq", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pi_obliq_v1"]
+
+[project.entry-points."verifiers.environments"]
+pi-obliq-v1 = "pi_obliq_v1:load_environment"

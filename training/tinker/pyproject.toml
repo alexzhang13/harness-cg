@@ -1,0 +1,42 @@
+[project]
+name = "rlm-train-tinker"
+version = "0.1.0"
+description = "Tinker training backend for the harness-cg experiments: prime-rl orchestrator and trainer semantics on Tinker, driving the verifiers environments of this repository."
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "rlm-train",
+    "tinker==0.39.0",
+    # The verifiers and renderers commits pinned by prime-rl@eaf95997f (deps/verifiers, deps/renderers).
+    "verifiers @ git+https://github.com/PrimeIntellect-ai/verifiers@58b119fa1b24eff85b74a75ccf3e132523b3c6c3",
+    "renderers==0.1.8.dev4",
+    # verifiers dependencies at the versions of prime-rl's lock file (newer prime-sandboxes breaks the v1 Pi sandbox)
+    "prime-sandboxes==0.2.26",
+    "prime-tunnel==0.1.6",
+    "mcp==1.23.3",
+    "openai==2.36.0",
+    "anthropic==0.100.0",
+    "transformers>=5.5,<5.6",
+    "datasets==4.6.1",
+    "pyarrow==24.0.0",
+    "torch>=2.9",
+    "aiohttp>=3.9",
+]
+
+[project.optional-dependencies]
+wandb = ["wandb"]
+
+[project.scripts]
+rlm-train-tinker = "rlm_train_tinker.cli:main"
+
+[tool.uv.sources]
+rlm-train = { path = "../..", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["rlm_train_tinker"]

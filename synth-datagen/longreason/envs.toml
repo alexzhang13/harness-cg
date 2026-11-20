@@ -1,0 +1,19 @@
+# LongReason root-row stream (longreason-expanded, real sub-LM); [orchestrator.train.env.sft] holds its thresholds.
+
+[orchestrator]
+[orchestrator.train]
+[[orchestrator.train.env]]
+id = "longreason-expanded"
+name = "longreason-expanded-train"
+ratio = 1.0
+[orchestrator.train.env.args]
+split = "train"
+num_examples = -1
+max_iterations = 20
+sub_max_tokens = 24000
+min_subcall = 0
+[orchestrator.train.env.sft]
+stage = 2
+min_reward = 1.0
+judge_note = "Synthetic LongReason-style item (ReClor/LogiQA2 expanded into filler). Intended: turn 1 multi-term line locate + snowball, turn 2 ONE thinking sub-call with the question type's procedure, submit."
+notes = "Synthetic training stream for the LongReason program."

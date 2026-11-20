@@ -1,0 +1,22 @@
+[project]
+name = "oolong-real-synth"
+version = "0.1.0"
+description = "OOLONG-real (D&D) real-task loader + vocabulary, question templates and scoring shared with tabletop-synth."
+requires-python = ">=3.11"
+dependencies = [
+    "rlm-train",
+    "synth-common",
+    "verifiers>=0.1.11",
+    "datasets>=4.0",
+]
+
+[tool.uv.sources]
+rlm-train = { path = "../../..", editable = true }
+synth-common = { path = "../synth_common", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["oolong_real_synth"]

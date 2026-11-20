@@ -1,0 +1,24 @@
+[project]
+name = "pi-ada-leval-v1"
+version = "0.1.0"
+description = "Pi baseline for Ada-LEval BestAnswer (verifiers v1 vf.Pi)."
+requires-python = ">=3.11"
+dependencies = [
+    "rlm-train",
+    "verifiers>=0.1.11",
+    "ada-leval-real",
+]
+
+[tool.uv.sources]
+rlm-train = { path = "../../..", editable = true }
+ada-leval-real = { path = "../../real/ada_leval", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pi_ada_leval_v1"]
+
+[project.entry-points."verifiers.environments"]
+pi-ada-leval-v1 = "pi_ada_leval_v1:load_environment"

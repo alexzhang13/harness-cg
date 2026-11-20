@@ -1,0 +1,5 @@
+{"label": "lg:OOLONG-Pairs", "task": "oolong_pairs", "args": {"context_length": 32768, "seed": 42}, "num_examples": 20}
+{"label": "lg:AdaLEval-BestAnswer", "task": "ada_leval_bestanswer", "args": {"setting": "128k", "manifest_split": "eval"}, "num_examples": 50}
+{"label": "sg:OOLONG-spam132k", "task": "oolong", "args": {"dataset_name": "spam", "min_ctx": 131072, "max_ctx": 131072, "exclude_numeric": false, "seed": 42}, "num_examples": 50}
+{"label": "sg:OBLIQ-math", "task": "obliq", "args": {"pool_size": 300, "min_distractors": 10, "metric": "ndcg@50", "doc_max_chars": 4000, "seed": 42, "max_rollout_seconds": 1800, "obliq_task": "math"}, "num_examples": 50}
+{"label": "sg:OBLIQ-wildchat", "task": "obliq", "args": {"pool_size": 300, "min_distractors": 10, "metric": "ndcg@50", "doc_max_chars": 4000, "seed": 42, "max_rollout_seconds": 1800, "obliq_task": "wildchat"}, "num_examples": 35}

@@ -1,0 +1,20 @@
+RESPOND WITH ONE JSON OBJECT AND NOTHING ELSE:
+{"decomposition": "<tag>", "description": "<one sentence>", "subcalls_appropriate": true|false,
+ "grounded": true|false, "clean_root": true|false, "parallel": true|false, "concise_subprompts": true|false,
+ "size_checked": true|false, "search_spam": true|false, "causal_ok": true|false,
+ "blind_probe": true|false, "parse_from_evidence": true|false, "condensed_output": true|false,
+ "cycles": [{"check_turn": <int>, "independent": true|false, "result": "pass"|"fail", "read_correctly": true|false,
+             "error_turns": [<int>], "error_kind": "<kind>"|null, "replan_turn": <int>|null,
+             "replan_grounded": true|false|null, "replan_new": true|false|null}],
+ "n_failed_checks": <int>,
+ "checks_independent": true|false, "failure_acknowledged": true|false, "no_repeat_after_fail": true|false,
+ "inventory_before_replan": true|false, "replan_from_information": true|false, "replan_is_new": true|false,
+ "reverified_before_submit": true|false, "false_pass": true|false, "commit_when_verified": true|false,
+ "no_redundant_work": true|false,
+ "reads_subcalls_critically": true|false,
+ "legible_steps": true|false, "recovers": true|false, "reasoning_present": true|false,
+ "reasoning_consistent": true|false, "reasoning_clean": true|false, "reasoning_decides": true|false,
+ "programmatic_rationale": true|false,   (ALWAYS include this field; true when not python_exact)
+ "improve": "<max 200 chars: the single most important change that would make this trajectory acceptable>",
+ "wasted_turns": <int>, "quality": <1-5>, "novel": true|false,
+ "reason": "<max 200 chars>"}

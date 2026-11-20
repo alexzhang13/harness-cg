@@ -1,0 +1,284 @@
+Use the following compact source-processing program, adapting parameters to the actual question.
+Keep the corpus and complete reader replies in Python variables. Use real sub-calls to interpret the source and
+extract semantic facts; compute aggregates in Python. Each block should do substantial work and print only compact
+coverage/results. Submit as soon as the result is computed. No ceremonial extra verification or submission turn.
+
+EXECUTION FORMAT: this harness executes only fenced Python blocks whose opening line is exactly ```repl.
+Write one such block per response. XML tool calls are not executable here. All imports below are standard library;
+there is no repository helper to import. Define/use helpers together or in a block that succeeds. Copy the actual
+question and options into TASK; the placeholder below is not the task. Do not print raw source or full reader replies.
+The skeleton is a method, not a source of answer values. All factual values must come from context or reader output.
+
+Block 1: a bounded reader call compiles the task. Its returned fields must drive later computation.
+```repl
+import json, re
+TASK = 'COPY THE ACTUAL QUESTION AND OPTIONS HERE'
+raw = llm_query("Compile TASK into one JSON object, no prose, with family and params. Do not solve it.\nfamily=finance: params={kind: trend|stable|rank|maxmin|count|hilo, companies:[exact company names, without list numbers],\nyears:[all requested fiscal years as integers], metric:exact metric identifier in question, numbered:boolean,\ndirection:highest|lowest (hilo only), target:exact company (rank only), threshold:string (count only)}.\ntrend means the largest year-over-year change within ONE company across years; stable means least volatility\nacross years; maxmin means the difference of maximum and minimum ACROSS companies in ONE fiscal year.\nrank orders companies at one year; count counts companies exceeding a threshold at one year; hilo selects an\nextreme company at one year. Exclude '(%)' or other unit annotations from the metric identifier.\nnumbered means whether the TASK's company list has explicit numbers.\nfamily=code: params={kind:cannot|pair|vc, K:node-depth integer, opts:[[letter,fully-qualified caller,fully-qualified callee],...]};\nfor cannot every callee is the question's target; for version-control use kind=vc only.\nfamily=game: params={kind:map|plant|defuse|site|rule, opts:[[letter,exact option text],...], n:reference round integer if rule}.\nCopy identifiers, company names and options exactly; ignore the misleading Crafter label on shooter logs.\nCode has four options; game may have two to eight. Return a JSON object only." + '\nTASK:\n' + TASK + '\nSOURCE SAMPLE:\n' + context[:2000])
+card = json.loads(raw[raw.find('{'):raw.rfind('}')+1])
+Q = card['params']
+print(json.dumps(card))
+```
+Block 2: normalize the returned card and index all filings.
+```repl
+COMPONENTS = {'CurrentAssets': ('BS', 'total current assets'), 'CurrentLiabilities': ('BS', 'total current liabilities'), 'TotalAssets': ('BS', 'total assets'), 'TotalLiabilities': ('BS', "total liabilities (current + noncurrent; if there is no 'Total liabilities' line, total liabilities and equity minus total equity)"), 'ShareholdersEquity': ('BS', "total stockholders'/shareholders' equity attributable to the company"), 'Cash': ('BS', 'cash and cash equivalents'), 'MarketableSecurities': ('BS', 'marketable securities / short-term investments shown as a CURRENT asset'), 'AccountsReceivableNet': ('BS', 'accounts receivable, net (trade receivables)'), 'InventoryNet': ('BS', 'inventories, net'), 'PropertyPlantEquipmentNet': ('BS', 'property, plant and equipment, net'), 'AccountsPayable': ('BS', "accounts payable (trade) on its own; if the balance sheet only shows 'accounts payable and accrued liabilities', use the separate accounts-payable amount from a note if one is shown"), 'LongTermDebt': ('BS', 'long-term debt, noncurrent portion (excluding current maturities)'), 'Revenue': ('IS', "TOTAL revenues: the line 'Total revenues' / 'Total revenues and other income' / 'Total net sales' if present, otherwise 'Net sales' / 'Revenues'"), 'CostOfGoodsSold': ('IS', 'cost of revenues / cost of sales / cost of goods sold'), 'GrossProfit': ('IS', 'gross profit (gross margin) in currency'), 'OperatingExpenses': ('IS', 'total operating expenses / total costs and expenses'), 'OperatingIncomeLoss': ('IS', 'operating income (loss)'), 'InterestExpense': ('IS', 'interest expense'), 'IncomeTaxExpenseBenefit': ('IS', 'provision for (benefit from) income taxes'), 'NetIncome': ('IS', 'net income (earnings) attributable to the company'), 'DepreciationAmortization': ('CF', 'depreciation and amortization (cash flow statement)'), 'OperatingCashFlow': ('CF', 'net cash provided by (used in) operating activities'), 'CapitalExpenditure': ('CF', 'capital expenditures / purchases of property, plant and equipment (as a positive number)'), 'DividendsPaid': ('CF', 'dividends paid (as a positive number)')}
+FORMULAS = {'WorkingCapital': ('CurrentAssets - CurrentLiabilities', False, False), 'NetWorkingCapital': ('CurrentAssets - CurrentLiabilities', False, False), 'CurrentRatio': ('CurrentAssets / CurrentLiabilities', False, False), 'QuickRatio': ('(CurrentAssets - InventoryNet) / CurrentLiabilities', False, False), 'FreeCashFlow': ('OperatingCashFlow - CapitalExpenditure', False, False), 'GrossMargin': ('(Revenue - CostOfGoodsSold) / Revenue * 100', False, True), 'COGSMargin': ('CostOfGoodsSold / Revenue * 100', False, True), 'D&AMargin': ('DepreciationAmortization / Revenue * 100', False, True), 'OperatingIncomeMargin': ('OperatingIncomeLoss / Revenue * 100', False, True), 'NetProfitMargin': ('NetIncome / Revenue * 100', False, True), 'CashFlowMargin': ('OperatingCashFlow / Revenue * 100', False, True), 'OperatingCashFlowRatio': ('OperatingCashFlow / CurrentLiabilities', False, False), 'CashToRevenueRatio': ('Cash / Revenue', False, False), 'EBITDA': ('NetIncome + InterestExpense + IncomeTaxExpenseBenefit + DepreciationAmortization', False, False), 'AccountsReceivableTurnover': ('Revenue / ((AccountsReceivableNet + AccountsReceivableNet_prev) / 2)', True, False), 'InventoryTurnoverRatio': ('CostOfGoodsSold / ((InventoryNet + InventoryNet_prev) / 2)', True, False), 'AssetTurnoverRatio': ('Revenue / ((TotalAssets + TotalAssets_prev) / 2)', True, False), 'FixedAssetTurnoverRatio': ('Revenue / ((PropertyPlantEquipmentNet + PropertyPlantEquipmentNet_prev) / 2)', True, False), 'ReturnOnAssets': ('NetIncome / ((TotalAssets + TotalAssets_prev) / 2) * 100', True, True), 'FreeCashFlowGrowthRate': ('((OperatingCashFlow - CapitalExpenditure) - (OperatingCashFlow_prev - CapitalExpenditure_prev)) / (OperatingCashFlow_prev - CapitalExpenditure_prev) * 100', True, True), 'CapexAs%OfRevenue': ('CapitalExpenditure / Revenue * 100', False, True), 'DebtToEquity': ('(LongTermDebt) / ShareholdersEquity', False, False)}
+ALIASES = {'Cash(CashAndCashEquivalents)': 'Cash', 'CashAndCashEquivalents': 'Cash'}
+metric = re.sub(r'\s*\(%\)\s*$', '', Q['metric']).strip()
+Q['metric'] = ALIASES.get(metric, metric)
+expr, prev, pct = FORMULAS.get(Q['metric'], (Q['metric'], False, False))
+Q.update(expr=expr, prev=prev, pct=pct, components=sorted(c for c in set(re.findall(r'[A-Za-z]+', expr)) if c in COMPONENTS))
+
+import re, json, statistics
+parts = re.split(r"<FILE:\s*([^>]+)>", context)
+FILINGS = []
+for i in range(1, len(parts), 2):
+    name, text = parts[i].strip(), parts[i + 1]
+    m = re.search(r"((?:19|20)\d{2})(\d{2})(\d{2})", name)
+    fy = int(m.group(1)) if m else None
+    if fy is None:
+        m = re.search(r"fiscal year ended\s*:?\s*[A-Za-z]+\.?\s+\d{1,2},?\s+((?:19|20)\d{2})", text[:30000], re.I)
+        fy = int(m.group(1)) if m else None
+    FILINGS.append({"file": name, "fy": fy, "text": text})
+STOP = {"inc", "corp", "co", "company", "the", "corporation", "plc", "ltd", "de", "new", "com", "and", "us", "llc",
+        "group", "incorporated", "holdings", "na", "sa", "nv"}
+def norm(s):
+    s = re.sub(r"[’'`]", "", s.lower())
+    return " " + re.sub(r"[^a-z0-9]+", " ", s) + " "
+def toks(name):
+    return [t for t in norm(name).split() if t not in STOP and len(t) > 1] or norm(name).split()
+for f in FILINGS:
+    f["company"] = None
+    for n in (6000, 40000):          # cover page first, then the first pages
+        head = norm(f["text"][:n])
+        hits = [(len(toks(c)), c) for c in Q["companies"] if all(" %s " % t in head for t in toks(c))]
+        if hits:
+            f["company"] = max(hits)[1]
+            break
+for f in FILINGS:
+    print(f["file"], "| FY", f["fy"], "|", f["company"], "|", len(f["text"]), "chars")
+```
+Block 3: one bounded batched extraction pass; missing-field rereads are bounded inside this block.
+```repl
+_KIND = {'CurrentAssets': 'BS', 'CurrentLiabilities': 'BS', 'TotalAssets': 'BS', 'TotalLiabilities': 'BS', 'ShareholdersEquity': 'BS', 'Cash': 'BS', 'MarketableSecurities': 'BS', 'AccountsReceivableNet': 'BS', 'InventoryNet': 'BS', 'PropertyPlantEquipmentNet': 'BS', 'AccountsPayable': 'BS', 'LongTermDebt': 'BS', 'Revenue': 'IS', 'CostOfGoodsSold': 'IS', 'GrossProfit': 'IS', 'OperatingExpenses': 'IS', 'OperatingIncomeLoss': 'IS', 'InterestExpense': 'IS', 'IncomeTaxExpenseBenefit': 'IS', 'NetIncome': 'IS', 'DepreciationAmortization': 'CF', 'OperatingCashFlow': 'CF', 'CapitalExpenditure': 'CF', 'DividendsPaid': 'CF'}
+
+ANCH = {
+    "BS": [r"total current assets", r"total assets", r"total current liabilities", r"total liabilities",
+           r"(?:stockholders|shareholders|share owners)[’'`]? ?equity", r"accounts payable", r"cash and cash equivalents",
+           r"property,? plant,? and equipment"],
+    "IS": [r"net (?:income|earnings)", r"(?:total )?(?:net )?(?:revenues?|sales)\b", r"cost of (?:sales|revenues?|goods)",
+           r"operating (?:income|profit)|income from operations", r"interest expense", r"income tax",
+           r"per share", r"gross (?:profit|margin)"],
+    "CF": [r"depreciation", r"operating activities", r"investing activities", r"financing activities",
+           r"capital expenditures|purchases? of property|additions to property", r"dividends", r"net cash"],
+}
+KEYS = {
+    "CurrentAssets": r"total current assets|current assets", "CurrentLiabilities": r"total current liabilities|current liabilities",
+    "TotalAssets": r"total assets", "TotalLiabilities": r"total liabilities", "ShareholdersEquity": r"total (?:stockholders|shareholders|share owners)",
+    "Cash": r"cash and cash equivalents", "MarketableSecurities": r"marketable securities|short-term investments|investment securities",
+    "AccountsReceivableNet": r"receivables?", "InventoryNet": r"inventor", "PropertyPlantEquipmentNet": r"property,? plant|property and equipment",
+    "AccountsPayable": r"accounts payable", "LongTermDebt": r"long-term debt|long-term borrowings",
+    "Revenue": r"revenues?|net sales", "CostOfGoodsSold": r"cost of (?:sales|revenues?|goods)", "GrossProfit": r"gross (?:profit|margin)",
+    "OperatingExpenses": r"operating expenses|costs and expenses", "OperatingIncomeLoss": r"operating income|income from operations|operating profit",
+    "InterestExpense": r"interest expense", "IncomeTaxExpenseBenefit": r"income tax", "NetIncome": r"net (?:income|earnings)",
+    "DepreciationAmortization": r"depreciation", "OperatingCashFlow": r"operating activities",
+    "CapitalExpenditure": r"capital expenditures|purchases? of property|additions to property", "DividendsPaid": r"dividends paid|dividends",
+}
+def best_window(text, kind, span=9000):
+    import bisect
+    pos = sorted((m.start(), a) for a in ANCH[kind] for m in re.finditer(a, text, re.I))
+    starts = [p for p, _ in pos]
+    best, bp = -1, 0
+    for i, (p, _) in enumerate(pos):
+        j = bisect.bisect_left(starts, p + span, lo=i)
+        names = {a for _, a in pos[i:j]}
+        if len(names) * 1000 + 999 <= best:
+            continue
+        score = len(names) * 1000 + min(999, len(re.findall(r"\d[\d,]{2,}", text[p:p + span])))
+        if score > best:
+            best, bp = score, p
+    return text[max(0, bp - 1500):bp + span]
+def key_windows(text, comp, n=4, w=1200):
+    out = []
+    for m in re.finditer(KEYS[comp], text, re.I):
+        seg = text[max(0, m.start() - w):m.start() + w]
+        if len(re.findall(r"\d[\d,]{2,}", seg)) >= 6 and not any(abs(m.start() - s) < w for s, _ in out):
+            out.append((m.start(), seg))
+        if len(out) >= n:
+            break
+    return [s for _, s in out]
+def years_for(f):
+    ys = [f["fy"]]
+    if Q["prev"]:
+        ys.append(f["fy"] - 1)
+    return ys
+def ask(f, comps, windows):
+    lines = "\n".join("- %s: %s" % (c, DEFS[c]) for c in comps)
+    ys = years_for(f)
+    return ("Below are excerpts from the Form 10-K annual report of %s for fiscal year %d (file %s).\n"
+            "Report these line items for fiscal year(s) %s -- the column(s) for the fiscal year ended in that year:\n%s\n"
+            "Use the CONSOLIDATED financial statements (not segment, quarterly, selected-data or parent-only tables). "
+            "Numbers in parentheses are negative. Copy each number exactly as printed and give the unit from the table "
+            "heading (thousands / millions / billions).\n"
+            'Answer ONLY with JSON: {"items": [{"metric": "<one of the names above, exactly>", "year": <year>, "label": "<line label as printed>", '
+            '"value": "<number as printed>", "unit": "<thousands|millions|billions>"}]}. Use "value": null if the item '
+            "is not in the excerpts.\n\nEXCERPTS:\n%s") % (f["company"], f["fy"], f["file"], ", ".join(map(str, ys)), lines,
+                                                         "\n...\n".join(windows))
+LABELS_SEEN = {}
+CUR_CO = [None]
+POSITIVE = {"CapitalExpenditure", "DividendsPaid", "InterestExpense", "CostOfGoodsSold", "OperatingExpenses",
+            "DepreciationAmortization"}
+SCALE = {"thousand": 1e-3, "thousands": 1e-3, "million": 1.0, "millions": 1.0, "billion": 1e3, "billions": 1e3}
+def parse_items(reply, window_text):
+    out = {}
+    m = re.search(r"\{.*\}", reply, re.S)
+    if not m:
+        return out
+    try:
+        items = json.loads(m.group(0)).get("items", [])
+    except Exception:
+        return out
+    flat = window_text.replace(",", "")
+    for it in items:
+        v = it.get("value")
+        if v in (None, "", "null"):
+            continue
+        s = str(v).strip()
+        neg = s.startswith("(") or s.startswith("-")
+        digits = re.sub(r"[^0-9.]", "", s)
+        if digits.endswith(".0") and digits[:-2] in flat:
+            digits = digits[:-2]
+        if not digits or digits.strip(".") == "" or digits not in flat:      # must be printed in what we sent
+            continue
+        unit = str(it.get("unit") or "millions").lower().strip()
+        stated = {u.lower() for u in re.findall(r"(?:in|dollars in|\$ in|amounts in)\s+(thousands|millions|billions)", window_text, re.I)}
+        if len(stated) == 1:                                                    # trust the table heading over the reply
+            unit = stated.pop()
+        try:
+            x = float(digits) * SCALE.get(unit, 1.0)
+        except ValueError:
+            continue
+        key = str(it.get("metric") or "")
+        comp = next((c for c in DEFS if key == c or key.split(":")[0].strip() == c), None)
+        if comp is None:
+            comp = next((c for c in DEFS if c.lower() in key.lower().replace(" ", "")), key)
+        val = -x if neg else x
+        if comp in POSITIVE:          # expenses / outflows are positive amounts in the gold (XBRL convention)
+            val = abs(val)
+        out[(comp, int(it.get("year") or 0))] = val
+        LABELS_SEEN[(CUR_CO[0], comp, int(it.get("year") or 0))] = str(it.get("label") or "")
+    return out
+DEFS = {"CurrentAssets": "total current assets", "CurrentLiabilities": "total current liabilities", "TotalAssets": "total assets", "TotalLiabilities": "total liabilities (current + noncurrent; if there is no 'Total liabilities' line, total liabilities and equity minus total equity)", "ShareholdersEquity": "total stockholders'/shareholders' equity attributable to the company", "Cash": "cash and cash equivalents", "MarketableSecurities": "marketable securities / short-term investments shown as a CURRENT asset", "AccountsReceivableNet": "accounts receivable, net (trade receivables)", "InventoryNet": "inventories, net", "PropertyPlantEquipmentNet": "property, plant and equipment, net", "AccountsPayable": "accounts payable (trade) on its own; if the balance sheet only shows 'accounts payable and accrued liabilities', use the separate accounts-payable amount from a note if one is shown", "LongTermDebt": "long-term debt, noncurrent portion (excluding current maturities)", "Revenue": "TOTAL revenues: the line 'Total revenues' / 'Total revenues and other income' / 'Total net sales' if present, otherwise 'Net sales' / 'Revenues'", "CostOfGoodsSold": "cost of revenues / cost of sales / cost of goods sold", "GrossProfit": "gross profit (gross margin) in currency", "OperatingExpenses": "total operating expenses / total costs and expenses", "OperatingIncomeLoss": "operating income (loss)", "InterestExpense": "interest expense", "IncomeTaxExpenseBenefit": "provision for (benefit from) income taxes", "NetIncome": "net income (earnings) attributable to the company", "DepreciationAmortization": "depreciation and amortization (cash flow statement)", "OperatingCashFlow": "net cash provided by (used in) operating activities", "CapitalExpenditure": "capital expenditures / purchases of property, plant and equipment (as a positive number)", "DividendsPaid": "dividends paid (as a positive number)"}
+TARGETS = [f for f in FILINGS if f["company"] and (f["fy"] in Q["years"])]
+seen = set(); uniq = []
+for f in TARGETS:                     # duplicate copies of the same filing (e.g. 'aapl-20200926(2).txt')
+    if (f["company"], f["fy"]) not in seen:
+        seen.add((f["company"], f["fy"])); uniq.append(f)
+TARGETS = uniq
+kinds = sorted({_KIND[c] for c in Q["components"]})
+for f in TARGETS:
+    f["win"] = [best_window(f["text"], k) for k in kinds]
+VALS = {}
+replies = llm_query_batched([ask(f, Q["components"], f["win"]) for f in TARGETS])
+for f, r in zip(TARGETS, replies):
+    CUR_CO[0] = f["company"]
+    for (c, y), x in parse_items(r, "\n".join(f["win"])).items():
+        VALS[(f["company"], c, y)] = x
+BAD_LABEL = {"AccountsPayable": r"accrued|and other", "Cash": r"restricted|marketable|investments",
+             "LongTermDebt": r"total debt|including current", "MarketableSecurities": r"non-?current|long-term|total",
+             "NetIncome": r"noncontrolling|including", "Revenue": r"^(?!.*total).*(?:product|service)s?$"}
+def suspicious(f, c, y):
+    lab = LABELS_SEEN.get((f["company"], c, y), "")
+    return bool(lab) and c in BAD_LABEL and re.search(BAD_LABEL[c], lab, re.I) is not None
+def missing():
+    out = []
+    for f in TARGETS:
+        for c in Q["components"]:
+            for y in years_for(f):
+                if (f["company"], c, y) not in VALS or suspicious(f, c, y):
+                    out.append((f, c, y))
+    return out
+for attempt in range(2):          # coverage check: re-ask what is missing on keyword windows
+    miss = missing()
+    if not miss:
+        break
+    jobs = {}
+    for f, c, y in miss:
+        jobs.setdefault(f["file"], (f, []))[1].append(c)
+    batch = []
+    for fname, (f, comps) in jobs.items():
+        wins = [w for c in sorted(set(comps)) for w in key_windows(f["text"], c, n=3 + 2 * attempt)]
+        batch.append((f, sorted(set(comps)), wins or [f["text"][:8000]]))
+    replies = llm_query_batched([ask(f, comps, wins) for f, comps, wins in batch])
+    for (f, comps, wins), r in zip(batch, replies):
+        CUR_CO[0] = f["company"]
+        for (c, y), x in parse_items(r, "\n".join(wins)).items():
+            if (f["company"], c, y) not in VALS or suspicious(f, c, y):
+                VALS[(f["company"], c, y)] = x
+print("got", len(VALS), "values; missing:", [(f["company"], c, y) for f, c, y in missing()])
+for k, v in sorted(VALS.items(), key=lambda kv: (kv[0][0], kv[0][1], kv[0][2])):
+    print(k, round(v, 3))
+```
+Block 4: compute from extracted records and submit in the same block.
+```repl
+args = Q['components'] + ([c + '_prev' for c in Q['components']] if Q['prev'] else [])
+exec('def formula(' + ', '.join(args) + '):\n    return ' + Q['expr'])
+
+def metric(company, year):
+    env = {}
+    for c in Q["components"]:
+        if (company, c, year) not in VALS:
+            return None
+        env[c] = VALS[(company, c, year)]
+        if Q["prev"]:
+            if (company, c, year - 1) not in VALS:
+                return None
+            env[c + "_prev"] = VALS[(company, c, year - 1)]
+    try:
+        return formula(**env)
+    except ZeroDivisionError:
+        return None
+cos = Q["companies"]
+k = Q["kind"]
+ans = None
+if k == "trend":
+    co = cos[0]
+    vals = {y: metric(co, y) for y in Q["years"]}
+    print(vals)
+    pairs = [(y, y + 1) for y in Q["years"][:-1] if vals.get(y) and vals.get(y + 1) is not None]
+    # LooGLE's gold for "largest absolute year-over-year change" is the largest |percent change|
+    if pairs:
+        best = max(pairs, key=lambda p: abs((vals[p[1]] - vals[p[0]]) / vals[p[0]]))
+        ans = "%d-%d" % best
+    else:
+        ans = "%d-%d" % (Q["years"][0], Q["years"][0] + 1)
+else:
+    y = Q["years"][-1]
+    if k == "stable":
+        series = {c: [metric(c, yy) for yy in Q["years"]] for c in cos}
+        print(series)
+        sd = {c: statistics.pstdev([x for x in v if x is not None]) for c, v in series.items()
+              if len([x for x in v if x is not None]) >= 2}
+        ans = str(cos.index(min(sd, key=sd.get)) + 1) if sd else "1"
+    else:
+        vals = {c: metric(c, y) for c in cos}
+        print(vals)
+        ok = {c: v for c, v in vals.items() if v is not None}
+        if not ok:
+            ans = "1"
+        elif k == "hilo":
+            pick = max(ok, key=ok.get) if Q["direction"] == "highest" else min(ok, key=ok.get)
+            ans = str(cos.index(pick) + 1)
+        elif k == "rank":
+            order = sorted(ok, key=ok.get, reverse=True)
+            ans = str(order.index(Q["target"]) + 1) if Q["target"] in order else "1"
+        elif k == "maxmin":
+            ans = "%.2fM" % (max(ok.values()) - min(ok.values()))
+        elif k == "count":
+            thr = float(re.sub(r"[^0-9.\-]", "", Q["threshold"]))
+            ans = str(sum(1 for v in ok.values() if v > thr))
+answer["content"] = "The correct answer is " + str(ans)
+answer["ready"] = True
+print(answer["content"])
+```
+
+Stop after at most one targeted repair. Total REPL output <=8000 characters. Aim for 2-4 root turns.

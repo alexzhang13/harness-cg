@@ -1,0 +1,825 @@
+# Appendix (broad mixture) | Qwen3-30B-A3B RL on 26 training streams; step 480 is the evaluated checkpoint
+
+output_dir = "outputs/train-mix-large"
+max_steps = 1000
+seq_len = 8192
+
+[model]
+name = "Qwen/Qwen3-30B-A3B-Instruct-2507"
+
+[wandb]
+project = "rlm-train-mix"
+name = "train-mix-large"
+shared = false
+
+[deployment]
+gpus_per_node = 8
+num_train_gpus = 4
+num_infer_gpus = 4
+
+[trainer]
+
+[trainer.model]
+fused_lm_head_token_chunk_size = "auto"
+optimization_dtype = "bfloat16"
+reduce_dtype = "bfloat16"
+
+[trainer.model.ac]
+mode = "full"
+freq = 1
+
+[trainer.model.lora]
+rank = 32
+alpha = 64
+dropout = 0.0
+target_modules = [
+    "q_proj", "k_proj", "v_proj", "o_proj",
+    "gate_proj", "up_proj", "down_proj",
+]
+
+[trainer.ckpt]
+interval = 60
+keep_last = 2
+weights_only = false
+skip_gather_master_weights = true
+
+[trainer.optim]
+lr = 5e-5
+
+[inference]
+gpu_memory_utilization = 0.80
+
+[inference.model]
+max_model_len = 24576
+enforce_eager = false
+
+[inference.parallel]
+tp = 4
+dp = 1
+
+[orchestrator]
+batch_size = 256
+rollouts_per_example = 4
+max_inflight_rollouts = 48
+
+[[orchestrator.filters]]
+type = "gibberish"
+enforce = false
+
+[[orchestrator.filters]]
+type = "repetition"
+enforce = true
+window = 3000
+prob_threshold = 0.99
+
+[[orchestrator.filters]]
+type = "zero_advantage"
+enforce = true
+
+[orchestrator.ckpt]
+interval = 60
+keep_last = 2
+
+[orchestrator.train]
+max_retries = 2
+
+[orchestrator.train.sampling]
+max_completion_tokens = 4096
+extra_body = { enable_thinking = false }
+
+[[orchestrator.train.env]]
+id = "babilong-real"
+name = "babilong-qa3-32k-128k-train"
+ratio = 0.0791
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+source = "train"
+task = "qa3"
+length = ["32k", "64k", "128k"]
+num_examples = -1
+seed = 42
+metric = "wordbound"
+state_label_set = true
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "longrlvr-real"
+name = "longrlvr-llama-32k-train"
+ratio = 0.1021
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+subset = "llama"
+split = "train"
+length = ["16k", "32k"]
+num_examples = 2000
+seed = 42
+answer_metric = "judge"
+judge_model = "openai/gpt-4.1-mini"
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "loongrl-real"
+name = "loongrl-musique-plain-train"
+ratio = 0.0623
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+source = "musique"
+variant = "plain"
+split = "train"
+holdout_frac = 0.1
+num_examples = -1
+seed = 42
+metric = "sub_em"
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "golongrl-real"
+name = "golongrl-table-train"
+ratio = 0.0346
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+task = "table"
+language = "English"
+min_context_chars = 20000
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "golongrl-real"
+name = "golongrl-summary-train"
+ratio = 0.025
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+task = "summary"
+language = "English"
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "personamem-v2"
+name = "personamem-v2-32k-train"
+ratio = 0.1174
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+split = "train"
+context_size = "32k"
+question_type = "all"
+num_examples = 2000
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "personamem-v3"
+name = "personamem-v3-recsys-short-train"
+ratio = 0.0656
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+task = "hidden_persona_recommendation"
+history_event_cap = 128
+num_examples = 1500
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "ada-leval-real"
+name = "adaleval-bestanswer-8k-train"
+ratio = 0.0152
+
+[orchestrator.train.env.args]
+task = "bestanswer"
+setting = "8k"
+num_examples = -1
+data_dir = "${ADALEVAL_DATA_DIR}"
+manifest_split = "train"
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+orchestrator_prompt = true
+user_prologue = "There can be many candidates, so fan out over them in parallel to screen and narrow the list down to the few plausible ones, then decide which of those is the most suitable answer to the question."
+
+[[orchestrator.train.env]]
+id = "ada-leval-real"
+name = "adaleval-bestanswer-16k-train"
+ratio = 0.0152
+
+[orchestrator.train.env.args]
+task = "bestanswer"
+setting = "16k"
+num_examples = -1
+data_dir = "${ADALEVAL_DATA_DIR}"
+manifest_split = "train"
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+orchestrator_prompt = true
+user_prologue = "There can be many candidates, so fan out over them in parallel to screen and narrow the list down to the few plausible ones, then decide which of those is the most suitable answer to the question."
+
+[[orchestrator.train.env]]
+id = "ada-leval-real"
+name = "adaleval-bestanswer-32k-train"
+ratio = 0.0152
+
+[orchestrator.train.env.args]
+task = "bestanswer"
+setting = "32k"
+num_examples = -1
+data_dir = "${ADALEVAL_DATA_DIR}"
+manifest_split = "train_long"
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+orchestrator_prompt = true
+user_prologue = "There can be many candidates, so fan out over them in parallel to screen and narrow the list down to the few plausible ones, then decide which of those is the most suitable answer to the question."
+
+[[orchestrator.train.env]]
+id = "graphwalks-real"
+name = "graphwalks-short-train"
+ratio = 0.0399
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+split = "128k_and_shorter"
+num_examples = 512
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "longbenchpro-real"
+name = "longbenchpro-en-16k-train"
+ratio = 0.0255
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+language = "English"
+token_length = "16k"
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "longbenchpro-real"
+name = "longbenchpro-en-32k-train"
+ratio = 0.0255
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+language = "English"
+token_length = "32k"
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "longbenchpro-real"
+name = "longbenchpro-en-64k-train"
+ratio = 0.0255
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+language = "English"
+token_length = "64k"
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "mrcr-v2-real"
+name = "mrcr-2ndl-32k-64k-train"
+ratio = 0.0259
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+needle_count = 2
+context_range = "32k-64k"
+num_examples = 512
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "oolong-real"
+name = "oolong-trec-8k-64k-train"
+ratio = 0.0301
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+dataset_name = "trec_coarse"
+min_ctx = 8192
+max_ctx = 65536
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "oolong-real"
+name = "oolong-spam-8k-64k-train"
+ratio = 0.0301
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+dataset_name = "spam"
+min_ctx = 8192
+max_ctx = 65536
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "oolong-pairs-real"
+name = "oolong-pairs-4k-train"
+ratio = 0.025
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+context_length = 4096
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "oolong-pairs-real"
+name = "oolong-pairs-8k-train"
+ratio = 0.025
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+context_length = 8192
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "longproc-real"
+name = "longproc-tom-2k-train"
+ratio = 0.0145
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+tasks = "tom_tracking"
+length = "2k"
+tom_dense_reward = true
+num_examples = -1
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "longproc-real"
+name = "longproc-tom-8k-train"
+ratio = 0.0100
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+tasks = "tom_tracking"
+length = "8k"
+tom_dense_reward = true
+num_examples = -1
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "browsecomp-plus-real"
+name = "browsecomp-plus-train"
+ratio = 0.0396
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+split = "train"
+docs_per_query = 50
+num_examples = 500
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "obliq-real"
+name = "obliq-writing-train"
+ratio = 0.0399
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+task = "writing"
+num_examples = -1
+seed = 42
+pool_size = 300
+metric = "ndcg@50"
+doc_max_chars = 4000
+max_iterations = 20
+sub_max_tokens = 4096
+max_sub_calls = 64
+
+[[orchestrator.train.env]]
+id = "manyih-priv"
+name = "manyih-priv-if-short-train"
+ratio = 0.0150
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+split = "train"
+train_max_tags = 5
+max_examples = -1
+seed = 42
+include_env_tips = true
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "prefeval-real"
+name = "prefeval-persona-10turn-train"
+ratio = 0.0488
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+task = "classification"
+pref_form = "implicit_persona"
+inter_turns = 10
+pref_position = "random"
+distractor_sampling = "random"
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[[orchestrator.train.env]]
+id = "fanoutqa-real"
+name = "fanoutqa-short-train"
+ratio = 0.0252
+
+[orchestrator.train.env.args]
+orchestrator_prompt = true
+min_iterations = 2
+split = "dev"
+setting = "evidence"
+max_context_chars = 400000
+context_format = "documents"
+metric = "loose"
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_subcall = 0
+
+[orchestrator.eval]
+interval = 40
+eval_base_model = true
+num_examples = 20
+rollouts_per_example = 1
+max_retries = 2
+
+[orchestrator.eval.sampling]
+max_completion_tokens = 4096
+extra_body = { enable_thinking = false }
+
+[[orchestrator.eval.env]]
+id = "nocha-real"
+name = "nocha-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+num_examples = 20
+seed = 42
+max_iterations = 12
+sub_max_tokens = 4096
+min_subcall = 1
+
+[[orchestrator.eval.env]]
+id = "babilong-real"
+name = "babilong-qa1-128k-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+source = "eval"
+task = "qa1"
+length = "128k"
+per_pair_examples = 20
+seed = 42
+metric = "wordbound"
+state_label_set = true
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "longrlvr-real"
+name = "longrlvr-long-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+subset = "qwen2.5-7b"
+split = "test"
+num_examples = 20
+seed = 42
+answer_metric = "judge"
+judge_model = "openai/gpt-4.1-mini"
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "loongrl-real"
+name = "loongrl-musique-keychain-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+source = "musique"
+variant = "keychain"
+num_examples = 20
+seed = 42
+metric = "sub_em"
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "mrcr-v2-real"
+name = "mrcr-8ndl-2m-4m-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+needle_count = 8
+context_range = "2m-4m"
+num_examples = 20
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "graphwalks-real"
+name = "graphwalks-1m-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+split = "256k_to_1mil"
+num_examples = 20
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "longbenchpro-real"
+name = "longbenchpro-256k-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+language = "English"
+token_length = "256k"
+num_examples = 20
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "oolong-real"
+name = "oolong-trec-256k-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+dataset_name = "trec_coarse"
+min_ctx = 262144
+max_ctx = 262144
+num_examples = 20
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "personamem-v2"
+name = "personamem-v2-128k-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+split = "benchmark"
+context_size = "128k"
+question_type = "all"
+num_examples = 20
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "manyih-priv"
+name = "manyih-priv-if-long-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+split = "eval"
+eval_min_tags = 15
+max_examples = 20
+seed = 42
+include_env_tips = true
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "oolong-real"
+name = "oolong-spam-128k-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+dataset_name = "spam"
+min_ctx = 131072
+max_ctx = 131072
+num_examples = 20
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "oolong-real"
+name = "oolong-trec-118k-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+dataset_name = "trec_coarse"
+min_ctx = 100000
+max_ctx = 131072
+num_examples = 20
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "obliq-real"
+name = "obliq-congress-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+task = "congress"
+num_examples = 20
+seed = 42
+pool_size = 200
+metric = "ndcg@50"
+doc_max_chars = 4000
+max_scan = 250000
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "browsecomp-plus-real"
+name = "browsecomp-plus-test-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+split = "test"
+num_examples = 20
+seed = 42
+docs_per_query = 200
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "longcot-mini-real"
+name = "longcot-easy-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+max_examples = 20
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "prefeval-real"
+name = "prefeval-persona-150turn-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+task = "classification"
+pref_form = "implicit_persona"
+inter_turns = 150
+pref_position = "random"
+distractor_sampling = "random"
+num_examples = 20
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "prefeval-real"
+name = "prefeval-explicit-300turn-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+task = "classification"
+pref_form = "explicit"
+inter_turns = 300
+pref_position = "random"
+distractor_sampling = "random"
+num_examples = 20
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+
+[[orchestrator.eval.env]]
+id = "fanoutqa-real"
+name = "fanoutqa-long-eval"
+num_examples = 20
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+orchestrator_prompt = true
+split = "dev"
+setting = "evidence"
+min_context_chars = 800000
+context_format = "documents"
+metric = "loose"
+num_examples = 20
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096

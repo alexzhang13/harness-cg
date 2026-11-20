@@ -1,0 +1,1 @@
+{"label": "lg:OOLONG-Pairs-32k-longout", "task": "oolong_pairs", "args": {"context_length": 32768, "seed": 42}, "num_examples": 20, "maxtok": 230000}

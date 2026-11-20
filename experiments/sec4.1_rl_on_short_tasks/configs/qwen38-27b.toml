@@ -1,0 +1,260 @@
+# Table main-composition | Qwen3.8-27B + RL (short tasks): full fine-tuning on the six short streams, 150 steps
+
+output_dir = "outputs/lengthgen6-27b-fullft"
+max_steps = 150
+seq_len = 49152
+max_async_level = 1
+
+[weight_broadcast]
+type = "nccl"
+
+[model]
+name = "Qwen/Qwen3.8-27B"
+
+[tokenizer]
+chat_template = "${REPO}/training/qwen3.8_nothink_chat_template.jinja"
+
+[wandb]
+project = "rlm-train-mix"
+name = "lengthgen6-27b-fullft"
+shared = false
+
+[deployment]
+gpus_per_node = 8
+num_train_gpus = 6
+num_infer_gpus = 2
+
+[trainer]
+
+[trainer.model]
+fused_lm_head_token_chunk_size = "auto"
+optim_cpu_offload = true
+optimization_dtype = "bfloat16"
+reduce_dtype = "bfloat16"
+
+[trainer.model.ac]
+mode = "full"
+freq = 1
+
+[trainer.model.ac_offloading]
+pin_memory = false
+max_inflight_activations = 5
+
+[trainer.ckpt]
+interval = 10
+keep_last = 2
+weights_only = true
+
+[trainer.optim]
+lr = 5e-6
+
+[inference]
+gpu_memory_utilization = 0.85
+vllm_extra = { max_num_seqs = 128, gdn_prefill_backend = "triton", default_chat_template_kwargs = { enable_thinking = false } }
+
+[inference.model]
+max_model_len = 98304
+enforce_eager = false
+
+[inference.parallel]
+tp = 2
+dp = 1
+
+[orchestrator]
+batch_size = 96
+rollouts_per_example = 8
+oversampling_factor = 2.0
+max_off_policy_steps = 4
+max_error_reschedule_attempts = 3
+use_renderer = true
+
+[orchestrator.renderer]
+name = "qwen3.5"
+
+[orchestrator.buffer]
+online_difficulty_filtering = true
+easy_threshold = 1.0
+hard_threshold = 0.0
+
+[orchestrator.advantage]
+[orchestrator.advantage.length_penalty]
+type = "turns"
+
+[[orchestrator.filters]]
+type = "repetition"
+enforce = true
+window = 3000
+prob_threshold = 0.99
+
+[[orchestrator.filters]]
+type = "zero_advantage"
+enforce = true
+
+[orchestrator.ckpt]
+interval = 10
+keep_last = 2
+
+[orchestrator.train]
+max_retries = 2
+
+[orchestrator.train.sampling]
+max_completion_tokens = 6000
+
+[[orchestrator.train.env]]
+id = "ada-leval-real"
+name = "adaleval-bestanswer-8k-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+task = "bestanswer"
+setting = "8k"
+num_examples = -1
+data_dir = "${ADALEVAL_DATA_DIR}"
+manifest_split = "train"
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+orchestrator_prompt = true
+user_prologue = "There can be many candidates, so fan out over them in parallel to screen and narrow the list down to the few plausible ones, then decide which of those is the most suitable answer to the question."
+
+[[orchestrator.train.env]]
+id = "graphwalks-real"
+name = "graphwalks-short-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+split = "128k_and_shorter"
+num_examples = 512
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+orchestrator_prompt = true
+
+[[orchestrator.train.env]]
+id = "longbenchpro-real"
+name = "longbenchpro-32k-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+language = "English"
+token_length = "32k"
+thinking = false
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+orchestrator_prompt = true
+
+[[orchestrator.train.env]]
+id = "mrcr-v2-real"
+name = "mrcr-2ndl-32k-64k-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+needle_count = 2
+context_range = "32k-64k"
+num_examples = 512
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+orchestrator_prompt = true
+
+[[orchestrator.train.env]]
+id = "oolong-real"
+name = "oolong-trec-32k-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+dataset_name = "trec_coarse"
+min_ctx = 32768
+max_ctx = 32768
+exclude_numeric = false
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+orchestrator_prompt = true
+
+[[orchestrator.train.env]]
+id = "oolong-pairs-real"
+name = "oolong-pairs-8k-train"
+ratio = 0.1665
+
+[orchestrator.train.env.args]
+context_length = 8192
+num_examples = -1
+shuffle = true
+seed = 42
+max_iterations = 30
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+max_sub_calls = 1000
+orchestrator_prompt = true
+
+[orchestrator.eval]
+interval = 10
+eval_base_model = true
+num_examples = 25
+rollouts_per_example = 1
+max_retries = 2
+
+[orchestrator.eval.sampling]
+max_completion_tokens = 6000
+extra_body = { chat_template_kwargs = { enable_thinking = false } }
+
+[[orchestrator.eval.env]]
+id = "ctcbench-real"
+name = "val-ctc-v1"
+num_examples = 25
+
+[orchestrator.eval.env.args]
+task = "outlier,contradiction_iid,grouping,reorder,hotpotqa"
+split = "val"
+split_version = "v1"
+per_task_examples = 5
+seed = 7
+max_iterations = 30
+
+[[orchestrator.eval.env]]
+id = "corpusqa-real"
+name = "val-cqa-128k-financial"
+num_examples = 13
+
+[orchestrator.eval.env.args]
+set_name = "128k"
+domain = "financial_en"
+num_examples = 13
+seed = 7
+
+[[orchestrator.eval.env]]
+id = "corpusqa-real"
+name = "val-cqa-128k-education"
+num_examples = 12
+
+[orchestrator.eval.env.args]
+set_name = "128k"
+domain = "education_en"
+num_examples = 12
+seed = 7
+
+[[orchestrator.eval.env]]
+id = "browsecomp-plus-real"
+name = "val-bcp-train25-wholecorpus"
+num_examples = 25
+
+[orchestrator.eval.env.args]
+split = "train"
+docs_per_query = "all"
+require_answerable = true
+num_examples = 25
+seed = 7

@@ -1,0 +1,25 @@
+[project]
+name = "obliq-bench-real"
+version = "0.1.0"
+description = "OBLIQ-Bench retrieval (math, writing, twitter, wildchat, congress) as an RLMTrainEnv environment."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "verifiers>=0.1.11.dev0",
+    "datasets>=2.20",
+    "huggingface-hub>=0.23",
+    "rlm-train",
+]
+
+[tool.uv.sources]
+rlm-train = { path = "../../..", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["obliq_real"]
+
+[project.entry-points."verifiers.environments"]
+obliq-bench-real = "obliq_real:load_environment"

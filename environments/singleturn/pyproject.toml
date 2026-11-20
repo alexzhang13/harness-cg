@@ -1,0 +1,36 @@
+[project]
+name = "singleturn-baseline"
+version = "0.1.0"
+description = "Base Transformer baseline: the model answers in one turn with the whole context in the prompt; reuses each task's dataset and grader."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "verifiers>=0.1.11",
+    "datasets>=4.0",
+    "oolong-real",
+    "oolong-pairs-real",
+    "graphwalks-real",
+    "longbenchpro-real",
+    "obliq-bench-real",
+    "ada-leval-real",
+    "mrcr-v2-real",
+]
+
+[tool.uv.sources]
+oolong-real = { path = "../real/oolong", editable = true }
+oolong-pairs-real = { path = "../real/oolong_pairs", editable = true }
+graphwalks-real = { path = "../real/graphwalks", editable = true }
+longbenchpro-real = { path = "../real/longbenchpro", editable = true }
+obliq-bench-real = { path = "../real/obliq", editable = true }
+ada-leval-real = { path = "../real/ada_leval", editable = true }
+mrcr-v2-real = { path = "../real/mrcr_v2", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["singleturn_baseline"]
+
+[project.entry-points."verifiers.environments"]
+singleturn-baseline = "singleturn_baseline:load_environment"

@@ -1,0 +1,25 @@
+[project]
+name = "loogle-v2-synth"
+version = "0.1.0"
+description = "Synthetic LooGLE-v2 strategy env (procedural finance / code / game / version-tree records, real sub-LM) + the LooGLE-v2 eval driver."
+requires-python = ">=3.11"
+dependencies = [
+    "rlm-train",
+    "synth-common",
+    "verifiers>=0.1.11",
+    "datasets>=4.0",
+]
+
+[tool.uv.sources]
+rlm-train = { path = "../../..", editable = true }
+synth-common = { path = "../synth_common", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["loogle_v2_synth", "loogle_strategy_synth"]
+
+[project.entry-points."verifiers.environments"]
+loogle-strategy-synth = "loogle_strategy_synth:load_environment"

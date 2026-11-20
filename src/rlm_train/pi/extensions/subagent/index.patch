@@ -1,0 +1,110 @@
+--- a/index.ts
++++ b/index.ts
+@@ -28,6 +28,12 @@
+ const MAX_CONCURRENCY = 4;
+ const COLLAPSED_ITEM_COUNT = 10;
+ 
++// Sub-agent call budget of this (root) process: every spawned child counts once, in single, parallel and chain
++// mode. When it is used up, further calls return an error and start nothing. 0 = unlimited. Children do not load
++// this extension, so they cannot spawn children.
++const MAX_SUBAGENT_CALLS = Number(process.env.PI_SUBAGENT_MAX_CALLS || 0);
++let subagentCalls = 0;
++
+ function formatTokens(count: number): string {
+ 	if (count < 1000) return count.toString();
+ 	if (count < 10000) return `${(count / 1000).toFixed(1)}k`;
+@@ -262,8 +268,52 @@
+ 		};
+ 	}
+ 
++	if (MAX_SUBAGENT_CALLS > 0) {
++		if (subagentCalls >= MAX_SUBAGENT_CALLS) {
++			// Returned as the child's assistant message as well as stderr: in parallel mode only a child's final
++			// assistant text is shown to the model.
++			const refusal =
++				`Sub-agent budget exhausted: all ${MAX_SUBAGENT_CALLS} sub-agent calls are used. ` +
++				`Do not call the subagent tool again; use the shell tools directly or give your final answer.`;
++			return {
++				agent: agentName,
++				agentSource: agent.source,
++				task,
++				exitCode: 1,
++				messages: [{ role: "assistant", content: [{ type: "text", text: refusal }] } as any],
++				stderr: refusal,
++				usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 },
++				step,
++			};
++		}
++		subagentCalls += 1;
++	}
++
+ 	const args: string[] = ["--mode", "json", "-p", "--no-session"];
+-	if (agent.model) args.push("--model", agent.model);
++
++	// --- rlm-train baseline wiring ---
++	// Children run on the same provider/endpoint and model as the root (the training interception endpoint);
++	// `model:` frontmatter is ignored unless PI_SUBAGENT_ALLOW_MODEL_OVERRIDE=1.
++	const subProvider = process.env.PI_SUBAGENT_PROVIDER || "verifiers";
++	const subModel = process.env.PI_SUBAGENT_MODEL || "model";
++	const allowOverride = ["1", "true", "yes"].includes(
++		(process.env.PI_SUBAGENT_ALLOW_MODEL_OVERRIDE || "").toLowerCase(),
++	);
++	const effectiveModel = allowOverride && agent.model ? agent.model : subModel;
++	if (!effectiveModel.includes("/")) args.push("--provider", subProvider);
++	args.push("--model", effectiveModel);
++
++	args.push("--no-context-files");
++
++	// Children get the same read-cap extension as the root (path exported by HostPi).
++	const readcap = process.env.PI_READCAP_EXT;
++	const readcapDisabled = ["1", "true", "yes"].includes((process.env.PI_READCAP_DISABLE || "").toLowerCase());
++	if (!readcapDisabled && readcap && fs.existsSync(readcap)) args.push("-e", readcap);
++
++	// The turn and wall-clock budget is loaded independently of the read-cap.
++	const turncap = process.env.PI_TURNCAP_EXT;
++	if (turncap && fs.existsSync(turncap)) args.push("-e", turncap);
++
+ 	if (agent.tools && agent.tools.length > 0) args.push("--tools", agent.tools.join(","));
+ 
+ 	let tmpPromptDir: string | null = null;
+@@ -277,7 +327,7 @@
+ 		messages: [],
+ 		stderr: "",
+ 		usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 },
+-		model: agent.model,
++		model: effectiveModel,
+ 		step,
+ 	};
+ 
+@@ -303,10 +353,22 @@
+ 
+ 		const exitCode = await new Promise<number>((resolve) => {
+ 			const invocation = getPiInvocation(args);
++			// Children get their own, smaller turn budget (PI_SUBAGENT_MAX_TURNS, default 10).
++			const childTurns = process.env.PI_SUBAGENT_MAX_TURNS || "10";
+ 			const proc = spawn(invocation.command, invocation.args, {
+ 				cwd: cwd ?? defaultCwd,
+ 				shell: false,
+ 				stdio: ["ignore", "pipe", "pipe"],
++				env: {
++					...process.env,
++					PI_MAX_TURNS: childTurns,
++					PI_WALL_TIMEOUT_S: process.env.PI_SUBAGENT_WALL_TIMEOUT_S || "180",
++					// Optional larger tool-output cap for sub-agents only (PI_SUBAGENT_TOOL_OUTPUT_CAP_BYTES, unset = the
++					// root's cap): a helper can then read a large slice of the context in one call.
++					...(process.env.PI_SUBAGENT_TOOL_OUTPUT_CAP_BYTES
++						? { PI_TOOL_OUTPUT_CAP_BYTES: process.env.PI_SUBAGENT_TOOL_OUTPUT_CAP_BYTES }
++						: {}),
++				},
+ 			});
+ 			let buffer = "";
+ 
+@@ -442,7 +504,7 @@
+ 
+ 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
+ 			const agentScope: AgentScope = params.agentScope ?? "user";
+-			const discovery = discoverAgents(ctx.cwd, agentScope);
++			const discovery = discoverAgents(ctx.cwd || process.cwd(), agentScope);
+ 			const agents = discovery.agents;
+ 			const confirmProjectAgents = params.confirmProjectAgents ?? true;
+ 

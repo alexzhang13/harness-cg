@@ -1,0 +1,9 @@
+{"env_id": "pi-mrcr-v2-v1", "label": "lg:MRCRv2", "num_examples": 50, "args": {"needle_count": 8, "context_range": "2m-4m", "seed": 42, "max_turns": 30}}
+{"env_id": "pi-graphwalks-v1", "label": "lg:GraphWalks", "num_examples": 50, "args": {"split": "256k_to_1mil", "seed": 42, "max_turns": 30}}
+{"env_id": "pi-longbenchpro-v1", "label": "lg:LongBenchPro", "num_examples": 115, "args": {"language": "English", "token_length": "256k", "thinking": false, "seed": 42, "max_turns": 30}}
+{"env_id": "pi-oolong-v1", "label": "lg:OOLONG", "num_examples": 50, "args": {"dataset_name": "trec_coarse", "min_ctx": 262144, "max_ctx": 262144, "exclude_numeric": false, "seed": 42, "max_turns": 30}}
+{"env_id": "pi-oolong-pairs-v1", "label": "lg:OOLONG-Pairs", "num_examples": 20, "args": {"context_length": 32768, "seed": 42, "max_turns": 30}}
+{"env_id": "pi-ada-leval-v1", "label": "lg:AdaLEval-BestAnswer", "num_examples": 50, "args": {"task": "bestanswer", "setting": "128k", "manifest_split": "eval", "max_turns": 30}}
+{"env_id": "pi-oolong-v1", "label": "sg:OOLONG-spam132k", "num_examples": 50, "args": {"dataset_name": "spam", "min_ctx": 131072, "max_ctx": 131072, "exclude_numeric": false, "seed": 42, "max_turns": 30}}
+{"env_id": "pi-obliq-v1", "label": "sg:OBLIQ-math", "num_examples": 50, "args": {"task": "math", "pool_size": 300, "min_distractors": 10, "metric": "ndcg@50", "doc_max_chars": 4000, "seed": 42, "max_turns": 30}}
+{"env_id": "pi-obliq-v1", "label": "sg:OBLIQ-wildchat", "num_examples": 50, "args": {"task": "wildchat", "pool_size": 300, "min_distractors": 10, "metric": "ndcg@50", "doc_max_chars": 4000, "seed": 42, "max_turns": 30}}

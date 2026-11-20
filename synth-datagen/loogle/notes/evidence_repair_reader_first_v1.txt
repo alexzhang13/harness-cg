@@ -1,0 +1,49 @@
+Solve the task with a compact, evidence-driven RLM program.
+
+1. Keep the full source and intermediate results in REPL variables. Inspect only a small structural sample.
+   Use a bounded sub-call to interpret the task or an unfamiliar source format; have its returned fields drive
+   later code. Request identifiers, field meanings, units and evidence spans, rather than an unsupported answer.
+2. Index and narrow the source in Python. Batch independent extraction requests. Each reader gets the question,
+   the necessary source slice and a small output schema. Keep complete replies in variables; print a compact
+   coverage summary, not raw documents or all reader replies.
+3. Before reducing, check the evidence contract: required keys and periods are present, units and scope agree,
+   and extracted values refer to the requested records. Empty matches, all-zero candidate evidence, unexpected
+   ties and indistinguishable candidates are reasons to inspect the extraction, not evidence for the first option.
+   A measured zero is valid only when supported by the source; missing evidence is not a measured zero.
+4. If a check fails, use at most one targeted repair pass. Give a reader a few relevant source examples plus the
+   failed assumption or ambiguous field, and ask for a corrected interpretation with evidence. Re-extract only
+   missing or disputed fields; retain validated work. Check the repaired extraction on the supplied examples.
+   Do not repeat a whole-corpus scan or restart the program blindly.
+5. Compute counts, comparisons, graph traversal, differences and arithmetic in Python. Derive the operation from
+   the task specification; distinguish units, normalization, scope, path length and repeated observations.
+   A plausible numerical result does not establish that the correct operation or inputs were used.
+6. Submit in the same block once the checks and computation succeed. Do not add ceremonial verification turns.
+   If evidence remains insufficient, state the limitation rather than presenting a default candidate as proven.
+
+Aim for 3-6 root turns and at most 8000 characters of total REPL feedback. Spend extra work only on a detected gap.
+Use fenced Python blocks opening with ```repl. Define helpers in a successful block or together with their use;
+an exception can discard names defined in that block. Check optional matches and fields before dereferencing them.
+Submit through answer["content"] and answer["ready"] inside an executable block. No XML tool calls.
+
+
+FIRST ACTION REQUIREMENT FOR THIS TRAINING EXERCISE:
+Your first executed block must make a useful source-bearing llm_query. Do not spend a separate turn printing the
+source first. Adapt the generic start below; COPY THE ACTUAL QUESTION AND OPTIONS into TASK. It is not a solver:
+
+```repl
+import json, re
+TASK = 'COPY THE ACTUAL QUESTION AND OPTIONS HERE'
+raw_spec = llm_query('Interpret TASK using the supplied SOURCE sample. Return one compact JSON object with '
+    'operation, required_fields, source_format, extraction_rules, units_and_scope, and answer_format. '
+    'Give concrete source-backed field or syntax examples when visible. Do not guess missing facts or solve '
+    'the whole task. Distinguish missing evidence from measured zero.\nTASK:\n' + TASK +
+    '\nSOURCE:\n' + context[:6000])
+spec = json.loads(raw_spec[raw_spec.find('{'):raw_spec.rfind('}')+1])
+print(spec)
+```
+
+Use the returned operation, required fields and extraction rules to construct the subsequent code. If the sample
+is insufficient, use one targeted reader batch over the relevant indexed slices to fill the missing fields. A call
+whose reply is ignored does not satisfy this exercise. The source and full replies remain in Python variables.
+The desired demonstration uses the reader for interpretation/extraction, then code for exhaustive deterministic
+work, coverage checks and reduction. Combine independent work into substantial blocks and submit promptly.

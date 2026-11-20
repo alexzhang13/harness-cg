@@ -1,0 +1,67 @@
+# LongReason root rows: base Qwen3.8-27B with note v1, 2 rollouts per item, thinking sub-calls.
+# build_sft_lr.py filters both the accepted and rejected buckets.
+# Run from the repository root:  python -m rlm_generate_trajectories.pipeline run synth-datagen/longreason/specs/gen_v1.toml
+sources = []
+
+[pipeline]
+name = "longreason-expanded-gen-v1"
+dir = "outputs/synth-datagen/longreason/gen_v1"
+
+[[envs.configs]]
+path = "synth-datagen/longreason/envs.toml"
+section = "train"
+streams = ["longreason-expanded-train"]
+
+[envs.env_args]
+max_iterations = 20
+
+[envs.overrides.longreason-expanded-train]
+priority = 0
+gen_writers = 10
+tasks_per_item = 48
+rollouts_per_task = 2
+max_examples_per_task = 2
+good_examples = 600
+max_examples_per_env = 1350
+load_num_examples = -1
+max_concurrent = 64
+sub_think = true
+
+[envs.overrides.longreason-expanded-train.env_vars]
+RLM_V2_NOTES_DIR = "synth-datagen/longreason/notes"
+RLM_JUDGE_PROBE_FROM_PROMPT_FLAG = 1
+RLM_TRAIN_EXEC_TIMEOUT_S = 10000
+RLM_TRAIN_REPL_REQUEST_TIMEOUT_S = 10000
+RLM_TRAIN_SUBCALL_TIMEOUT_S = 10000
+RLM_TRAIN_SUB_CONCURRENCY = 48
+
+[targets]
+distinct_tasks = 1350
+examples_per_task = 1
+max_examples_per_task = 2
+count_by = "meta"
+good_examples = 600
+max_examples_per_env = 1350
+
+[teacher]
+model = "qwen38-27b"
+temperature = 0.8
+max_completion_tokens = 16384
+max_concurrent = 64
+chunk_size = 48
+request_timeout = 3600
+hint_mode = "note"
+
+[teacher.chat_template_kwargs]
+enable_thinking = false
+
+# Served base Qwen3.8-27B (--served-model-name qwen38-27b); root and sub-calls share it.
+[[teacher.servers]]
+host = "localhost"
+ports = [8000]
+slots_per_port = 3
+
+[judge]
+model = "openai/gpt-5-mini"
+concurrency = 4
+rubric = "reverify"

@@ -1,0 +1,25 @@
+[project]
+name = "longreason-expanded"
+version = "0.1.0"
+description = "LongReason-style items expanded from ReClor / LogiQA 2.0 into 128k DCLM filler, real sub-LM."
+requires-python = ">=3.11"
+dependencies = [
+    "rlm-train",
+    "longreason-real",
+    "verifiers>=0.1.11",
+    "datasets>=4.0",
+]
+
+[tool.uv.sources]
+rlm-train = { path = "../../..", editable = true }
+longreason-real = { path = "../../real/longreason", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["longreason_expanded"]
+
+[project.entry-points."verifiers.environments"]
+longreason-expanded = "longreason_expanded:load_environment"

@@ -1,0 +1,1742 @@
+{
+  "model": "qwen38-27b",
+  "endpoints": [
+    "http://localhost:8000/v1",
+    "http://localhost:8001/v1"
+  ],
+  "concurrency_per_endpoint": 8,
+  "max_tokens": 8192,
+  "temperature": 0.8,
+  "rollout_timeout": 1200,
+  "judge_model": "openai/gpt-5.4-mini",
+  "jobs": [
+    {
+      "name": "long_game_sampled_c00",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100000,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c00",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100000,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c00",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50000,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c00",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50000,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c00",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50000,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c00",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50000,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c00",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100000,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c00",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100000,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c01",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100064,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c01",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50064,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c01",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50064,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c01",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50064,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c01",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50064,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c01",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100064,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c01",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100064,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c01",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100064,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c02",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50128,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c02",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100128,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c02",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50128,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c02",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100128,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c02",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50128,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c02",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50128,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c02",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100128,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c02",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100128,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c03",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100192,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c03",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100192,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c03",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50192,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c03",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50192,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c03",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50192,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c03",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50192,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c03",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100192,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c03",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100192,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c04",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50256,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c04",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100256,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c04",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50256,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c04",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100256,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c04",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100256,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c04",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50256,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c04",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50256,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c04",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100256,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c05",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50320,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c05",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100320,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c05",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50320,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c05",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100320,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c05",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100320,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c05",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50320,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c05",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100320,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c05",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50320,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c06",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50384,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c06",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100384,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c06",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50384,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c06",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100384,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c06",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100384,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c06",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50384,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c06",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50384,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c06",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100384,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c07",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50448,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c07",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50448,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c07",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100448,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c07",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50448,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c07",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100448,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c07",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100448,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c07",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100448,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c07",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50448,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c08",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100512,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c08",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100512,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c08",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50512,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c08",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100512,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c08",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100512,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c08",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50512,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c08",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50512,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c08",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50512,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c09",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50576,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c09",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50576,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c09",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100576,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c09",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100576,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c09",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50576,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c09",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100576,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c09",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100576,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c09",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50576,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c10",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100640,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c10",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50640,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c10",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100640,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c10",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50640,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c10",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50640,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c10",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100640,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c10",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50640,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c10",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100640,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c11",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100704,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c11",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50704,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c11",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100704,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c11",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50704,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c11",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100704,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c11",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50704,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c11",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100704,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c11",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50704,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c12",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100768,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c12",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100768,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c12",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50768,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c12",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50768,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c12",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50768,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c12",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100768,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c12",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50768,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c12",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100768,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c13",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50832,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c13",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100832,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c13",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100832,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c13",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50832,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c13",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100832,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c13",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100832,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c13",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50832,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c13",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50832,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c14",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100896,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c14",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100896,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c14",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50896,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c14",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50896,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c14",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50896,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c14",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50896,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c14",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100896,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c14",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100896,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c15",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50960,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c15",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100960,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c15",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50960,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c15",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100960,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c15",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100960,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c15",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50960,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c15",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 100960,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c15",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 50960,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c16",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101024,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c16",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51024,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c16",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101024,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c16",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51024,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c16",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101024,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c16",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51024,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c16",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51024,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c16",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101024,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c17",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101088,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c17",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101088,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c17",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51088,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c17",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101088,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c17",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51088,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c17",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101088,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c17",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51088,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c17",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51088,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c18",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101152,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c18",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51152,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c18",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101152,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c18",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51152,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c18",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101152,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c18",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51152,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c18",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51152,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c18",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101152,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c19",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51216,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c19",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51216,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c19",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101216,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c19",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101216,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c19",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51216,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c19",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101216,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c19",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51216,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c19",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101216,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c20",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51280,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c20",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51280,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c20",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51280,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c20",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101280,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c20",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101280,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c20",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101280,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c20",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101280,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c20",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51280,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c21",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101344,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c21",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51344,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c21",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101344,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c21",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51344,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c21",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101344,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c21",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51344,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c21",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101344,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c21",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51344,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c22",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51408,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c22",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101408,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c22",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101408,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c22",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101408,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c22",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101408,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c22",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51408,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c22",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51408,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c22",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51408,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_finance_sampled_c23",
+      "profile": "long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101472,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "short_finance_sampled_c23",
+      "profile": "short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51472,
+      "note": "compact_v6_finance_program.txt"
+    },
+    {
+      "name": "long_versions_sampled_c23",
+      "profile": "long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101472,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_game_sampled_c23",
+      "profile": "short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51472,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "long_code_sampled_c23",
+      "profile": "long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101472,
+      "note": "compact_v6_code_program.txt"
+    },
+    {
+      "name": "long_game_sampled_c23",
+      "profile": "long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 101472,
+      "note": "compact_v6_game_program.txt"
+    },
+    {
+      "name": "short_versions_sampled_c23",
+      "profile": "short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51472,
+      "note": "compact_v6_versions_program.txt"
+    },
+    {
+      "name": "short_code_sampled_c23",
+      "profile": "short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 51472,
+      "note": "compact_v6_code_program.txt"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+[project]
+name = "oolong-real"
+version = "0.1.0"
+description = "OOLONG-synth long-context aggregation QA as an RLMTrainEnv environment."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "rlm-train",
+    "verifiers>=0.1.11",
+    "datasets>=4.0",
+    "python-dateutil",
+]
+
+[tool.uv.sources]
+rlm-train = { path = "../../..", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["oolong_real"]
+
+[project.entry-points."verifiers.environments"]
+oolong-real = "oolong_real:load_environment"

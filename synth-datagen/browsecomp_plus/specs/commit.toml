@@ -1,0 +1,86 @@
+# Commit-near-cap: hard tasks with the commit note. The published rows come from runs at max_iterations 15, 20 and 30.
+# Run from the repository root:  python -m rlm_generate_trajectories.pipeline run synth-datagen/browsecomp_plus/specs/commit.toml
+sources = []
+
+[pipeline]
+name = "bcpsynth-commit"
+dir = "outputs/synth-datagen/browsecomp_plus/commit"
+
+[[envs.configs]]
+path = "synth-datagen/browsecomp_plus/envs.toml"
+section = "train"
+streams = ["bcpsynth-hard-commit"]
+
+[envs.env_args]
+max_iterations = 20
+
+[envs.overrides.bcpsynth-hard-commit]
+gen_writers = 3
+priority = 0
+rollouts_per_task = 1
+max_examples_per_task = 1
+good_examples = 400
+max_examples_per_env = 4000
+load_num_examples = 4000
+max_concurrent = 40
+
+[envs.overrides.bcpsynth-hard-commit.env_vars]
+RLM_V2_NOTES_DIR = "synth-datagen/browsecomp_plus/notes/commit"
+RLM_NOTE_PREAMBLE = 1
+RLM_TRAIN_EXEC_TIMEOUT_S = 1800
+RLM_TRAIN_REPL_REQUEST_TIMEOUT_S = 2400
+RLM_TRAIN_SUB_CONCURRENCY = 24
+
+[targets]
+distinct_tasks = 1200
+examples_per_task = 1
+max_examples_per_task = 1
+count_by = "task"
+good_examples = 400
+max_examples_per_env = 4000
+
+[teacher]
+model = "qwen38-27b"
+temperature = 0.8
+max_completion_tokens = 16384
+max_concurrent = 40
+chunk_size = 40
+request_timeout = 1800
+sub_no_think = true
+hint_mode = "note"
+
+[teacher.chat_template_kwargs]
+enable_thinking = false
+
+# Served base Qwen3.8-27B (--served-model-name qwen38-27b), one generation writer per port.
+[[teacher.servers]]
+host = "localhost"
+ports = [8100, 8101, 8102]
+slots_per_port = 1
+
+[judge]
+model = "openai/gpt-5-mini"
+concurrency = 12
+rubric = "reverify"
+judge_all = true
+min_quality = 4
+
+[generate]
+load_num_examples = 4000
+tasks_per_item = 40
+rollouts_per_task = 1
+max_attempts_per_task = 2
+seed = 0
+
+[export]
+max_per_task = 10
+max_per_context = 100000
+max_per_env = 0
+holdout = 0.0
+seed = 0
+sources = ["generated"]
+
+[orchestrator]
+poll_s = 30
+stop_when_done = true
+max_node_items = 4

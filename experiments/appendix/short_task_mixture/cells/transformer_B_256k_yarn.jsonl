@@ -1,0 +1,2 @@
+{"label": "lg:OOLONG", "task": "oolong", "args": {"dataset_name": "trec_coarse", "min_ctx": 262144, "max_ctx": 262144, "exclude_numeric": false, "seed": 42}, "num_examples": 50}
+{"label": "lg:LongBenchPro", "task": "longbenchpro", "args": {"language": "English", "token_length": "256k", "thinking": false, "seed": 42}, "num_examples": 115}

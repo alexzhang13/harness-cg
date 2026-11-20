@@ -1,0 +1,45 @@
+# BrowseComp-Plus SFT streams: `bcpsynth-train` (main) and `bcpsynth-hard-commit` (hard tasks, late commits).
+# [orchestrator.train.env.sft] holds each stream's acceptance thresholds.
+
+[[orchestrator.train.env]]
+id = "browsecomp-plus-synth"
+name = "bcpsynth-train"
+ratio = 0.0
+[orchestrator.train.env.args]
+split = "train"
+num_examples = 4000
+scale = "full"
+max_iterations = 30
+max_sub_calls = 120
+[orchestrator.train.env.sft]
+stage = 2
+min_reward = 1.0
+search_ok = true
+max_search_patterns = 40
+max_raw_echo_chars = 20000
+max_total_output_chars = 40000
+max_block_lines = 90
+judge_note = "Intended design (the BrowseComp-Plus corpus program): turn 1 peeks at the corpus and one sub-call describes a document's layout; turn 2 builds doc_id-only search tools in one block (query-time BM25 over the query's own words, exact-phrase co-occurrence filters, titles, excerpts) and screens the fused top ~60 of ~8 clue-combining queries with ONE batched sub-call set (10 excerpts per prompt, a 0-3 relevance row per document). Then, one decision per turn: an entity named by a screen row is pinned by an exact-name lookup and 1-3 of its documents are read whole by one sub-call returning ANSWER / DOC / QUOTE / NEXT, the quote checked in code; NEXT hops are followed the same way; when nothing is relevant the root searches for DIFFERENT evidence (another clue, a page's wording, a candidate, two rare co-occurring words) and screens only new documents. Candidate-name sub-calls are leads to verify, never answers. A final clue check is expected when a clue is unconfirmed or candidates compete, and the answer is submitted in the block where the check passes. Compact is intended: ~6-14 turns; no raw document bodies printed; no document screened twice; no repeated searches of the same idea."
+notes = "Synthetic BrowseComp-Plus, full scale (~21k docs/world), fictional knowledge graph, oracle sub-LM"
+
+[[orchestrator.train.env]]
+id = "browsecomp-plus-synth"
+name = "bcpsynth-hard-commit"
+ratio = 0.0
+[orchestrator.train.env.args]
+split = "train"
+num_examples = 4000
+scale = "full"
+max_iterations = 15
+max_sub_calls = 120
+p_rare = 0.0
+[orchestrator.train.env.sft]
+stage = 2
+min_reward = 0.0
+search_ok = true
+max_search_patterns = 40
+max_raw_echo_chars = 20000
+max_total_output_chars = 40000
+max_block_lines = 90
+judge_note = "Hard synthetic BrowseComp-Plus task under a 15-turn budget, expected to be often unsolvable. Intended design: the v9 corpus program (layout probe, scan-BM25 tools, batched sub-call screen, candidate brainstorm, quote-checked reads); and when only ~3 turns remain without a confirmed candidate, the root says so explicitly, consolidates every candidate found so far with the clues each satisfies, asks ONE sub-call which is best supported, and submits that best guess in the same block. Submitting a reasoned best guess near the budget limit is the intended behaviour even if the answer turns out wrong; running out of turns without submitting is the failure."
+notes = "Synthetic BrowseComp-Plus, hard (no rare anchor), 15-turn budget: commit-near-cap examples"

@@ -1,0 +1,164 @@
+# Table tab:generalization | Pi trained on the six short tasks (evaluated at step 300)
+
+output_dir = "outputs/short-mix/pi"
+max_steps = 1000
+seq_len = 8192
+
+[model]
+name = "Qwen/Qwen3-30B-A3B-Instruct-2507"
+
+[wandb]
+project = "rlm-lengthgen"
+name = "lengthgen-mix-short-30b-1000-pi"
+shared = false
+
+[deployment]
+gpus_per_node = 8
+num_train_gpus = 4
+num_infer_gpus = 4
+
+[trainer]
+
+[trainer.model]
+fused_lm_head_token_chunk_size = "auto"
+optimization_dtype = "bfloat16"
+reduce_dtype = "bfloat16"
+
+[trainer.model.ac]
+mode = "full"
+freq = 1
+
+[trainer.model.lora]
+rank = 32
+alpha = 64
+dropout = 0.0
+target_modules = [
+    "q_proj", "k_proj", "v_proj", "o_proj",
+    "gate_proj", "up_proj", "down_proj",
+]
+
+[trainer.ckpt]
+interval = 60
+keep_last = 2
+weights_only = false
+skip_gather_master_weights = true
+
+[trainer.optim]
+lr = 5e-5
+
+[inference]
+gpu_memory_utilization = 0.80
+
+[inference.model]
+max_model_len = 65536
+enforce_eager = false
+
+[inference.parallel]
+tp = 4
+dp = 1
+
+[orchestrator]
+use_renderer = false
+batch_size = 64
+rollouts_per_example = 4
+max_inflight_rollouts = 32
+
+[[orchestrator.filters]]
+type = "gibberish"
+enforce = false
+
+[[orchestrator.filters]]
+type = "repetition"
+enforce = true
+window = 3000
+prob_threshold = 0.99
+
+[[orchestrator.filters]]
+type = "zero_advantage"
+enforce = false
+
+[orchestrator.ckpt]
+interval = 60
+keep_last = 2
+
+[orchestrator.train]
+max_retries = 2
+
+[orchestrator.train.sampling]
+temperature = 0.7
+max_completion_tokens = 4096
+extra_body = { enable_thinking = false, top_p = 0.8, top_k = 20, min_p = 0.0 }
+
+[[orchestrator.train.env]]
+id = "pi-ada-leval-v1"
+name = "adaleval-bestanswer-8k-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+max_turns = 30
+task = "bestanswer"
+setting = "8k"
+num_examples = -1
+manifest_split = "train"
+
+[[orchestrator.train.env]]
+id = "pi-graphwalks-v1"
+name = "graphwalks-short-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+max_turns = 30
+split = "128k_and_shorter"
+num_examples = 512
+seed = 42
+
+[[orchestrator.train.env]]
+id = "pi-longbenchpro-v1"
+name = "longbenchpro-32k-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+max_turns = 30
+language = "English"
+token_length = "32k"
+thinking = false
+num_examples = -1
+seed = 42
+
+[[orchestrator.train.env]]
+id = "pi-mrcr-v2-v1"
+name = "mrcr-2ndl-32k-64k-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+max_turns = 30
+needle_count = 2
+context_range = "32k-64k"
+num_examples = 512
+seed = 42
+
+[[orchestrator.train.env]]
+id = "pi-oolong-v1"
+name = "oolong-trec-32k-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+max_turns = 30
+dataset_name = "trec_coarse"
+min_ctx = 32768
+max_ctx = 32768
+exclude_numeric = false
+num_examples = -1
+seed = 42
+
+[[orchestrator.train.env]]
+id = "pi-oolong-pairs-v1"
+name = "oolong-pairs-8k-train"
+ratio = 0.1665
+
+[orchestrator.train.env.args]
+max_turns = 30
+context_length = 8192
+num_examples = -1
+shuffle = true
+seed = 42

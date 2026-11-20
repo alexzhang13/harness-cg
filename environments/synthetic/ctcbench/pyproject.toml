@@ -1,0 +1,25 @@
+[project]
+name = "ctcbench-synth"
+version = "0.1.0"
+description = "Synthetic CTC-Bench: real split_v1 rows recombined toward long rungs, eval-decontaminated, with calibrated fake sub-LMs."
+requires-python = ">=3.11"
+dependencies = [
+    "synth-common",
+    "ctcbench-real",
+    "verifiers>=0.1.11",
+    "datasets>=4.0",
+]
+
+[tool.uv.sources]
+synth-common = { path = "../synth_common", editable = true }
+ctcbench-real = { path = "../../real/CTCBench", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ctcbench_synth"]
+
+[project.entry-points."verifiers.environments"]
+ctcbench-synth = "ctcbench_synth:load_environment"

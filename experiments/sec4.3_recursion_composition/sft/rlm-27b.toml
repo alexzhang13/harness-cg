@@ -1,0 +1,66 @@
+# Table recursion-composition, + SFT row for RLM-27B: SFT on the gated fake-task corpus.
+# The paper uses step 100 of this 300-step schedule.
+
+output_dir = "outputs/sft/gated-rlm-27b"
+max_steps = 300
+dist_timeout_seconds = 1800
+loss_impl = "liger_fused"
+
+[model]
+name = "${INIT_WEIGHTS}"
+seq_len = 32768
+optim_cpu_offload = true
+optimization_dtype = "bfloat16"
+reduce_dtype = "bfloat16"
+
+[model.ac]
+mode = "full"
+freq = 1
+
+[data]
+type = "sft"
+name = "${SFT_DATA_DIR}"
+splits = ["train"]
+seq_len = 32768
+pack_function = "cat"
+micro_batch_size = 1
+batch_size = 4
+shuffle = true
+seed = 0
+
+[val]
+interval = 20
+eval_on_start = true
+
+[val.data]
+type = "sft"
+name = "${SFT_DATA_DIR}"
+splits = ["validation"]
+seq_len = 32768
+pack_function = "cat"
+micro_batch_size = 1
+batch_size = 4
+shuffle = false
+
+[optim]
+type = "adamw"
+lr = 6e-6
+weight_decay = 0.0
+max_norm = 1.0
+
+[scheduler]
+type = "cosine"
+warmup_steps = 6
+min_lr = 2e-7
+
+[ckpt]
+interval = 100
+
+[ckpt.weights]
+
+[deployment]
+num_gpus = 4
+
+[wandb]
+project = "rlm-sft-27b"
+name = "gated-sft-rlm-27b"

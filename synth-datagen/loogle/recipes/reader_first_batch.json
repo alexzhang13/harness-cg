@@ -1,0 +1,88 @@
+{
+  "model": "qwen38-27b",
+  "endpoints": [
+    "http://localhost:8000/v1",
+    "http://localhost:8001/v1",
+    "http://localhost:8002/v1",
+    "http://localhost:8003/v1"
+  ],
+  "concurrency_per_endpoint": 8,
+  "max_tokens": 8192,
+  "temperature": 0.8,
+  "rollout_timeout": 1200,
+  "judge_model": "openai/gpt-5.4-mini",
+  "jobs": [
+    {
+      "name": "reader_first_short_game_sampled",
+      "profile": "evidence_repair_v1_short",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 400000,
+      "note": "evidence_repair_reader_first_v1.txt"
+    },
+    {
+      "name": "reader_first_long_code_sampled",
+      "profile": "evidence_repair_v1_long",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 500000,
+      "note": "evidence_repair_reader_first_v1.txt"
+    },
+    {
+      "name": "reader_first_short_code_sampled",
+      "profile": "evidence_repair_v1_short",
+      "family": "code",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 400000,
+      "note": "evidence_repair_reader_first_v1.txt"
+    },
+    {
+      "name": "reader_first_long_versions_sampled",
+      "profile": "evidence_repair_v1_long",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 500000,
+      "note": "evidence_repair_reader_first_v1.txt"
+    },
+    {
+      "name": "reader_first_short_versions_sampled",
+      "profile": "evidence_repair_v1_short",
+      "family": "versions",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 400000,
+      "note": "evidence_repair_reader_first_v1.txt"
+    },
+    {
+      "name": "reader_first_short_finance_sampled",
+      "profile": "evidence_repair_v1_short",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 400000,
+      "note": "evidence_repair_reader_first_v1.txt"
+    },
+    {
+      "name": "reader_first_long_finance_sampled",
+      "profile": "evidence_repair_v1_long",
+      "family": "finance",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 500000,
+      "note": "evidence_repair_reader_first_v1.txt"
+    },
+    {
+      "name": "reader_first_long_game_sampled",
+      "profile": "evidence_repair_v1_long",
+      "family": "game",
+      "root_mode": "sampled",
+      "n": 64,
+      "start": 500000,
+      "note": "evidence_repair_reader_first_v1.txt"
+    }
+  ]
+}

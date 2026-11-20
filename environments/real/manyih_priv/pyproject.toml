@@ -1,0 +1,25 @@
+[project]
+name = "manyih-priv"
+version = "0.1.0"
+description = "ManyIH-Bench instruction-following env split by # of privilege-tagged directives (train few / eval many), with the repo's real CSR/ISR judging."
+requires-python = ">=3.11"
+dependencies = [
+    "verifiers>=0.1.11.dev0",
+    "datasets>=2.20",
+    "huggingface-hub>=0.20",
+    "httpx>=0.27",
+    "rlm-train",
+]
+
+[tool.uv.sources]
+rlm-train = { path = "../../..", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["manyih_priv"]
+
+[project.entry-points."verifiers.environments"]
+manyih-priv = "manyih_priv:load_environment"

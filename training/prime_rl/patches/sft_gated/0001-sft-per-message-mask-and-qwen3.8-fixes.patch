@@ -1,0 +1,651 @@
+diff --git a/packages/prime-rl-configs/src/prime_rl/configs/sft.py b/packages/prime-rl-configs/src/prime_rl/configs/sft.py
+index 29a6090f5..0afc577de 100644
+--- a/packages/prime-rl-configs/src/prime_rl/configs/sft.py
++++ b/packages/prime-rl-configs/src/prime_rl/configs/sft.py
+@@ -160,6 +160,20 @@ SFTDeploymentConfig: TypeAlias = Annotated[
+ ]
+ 
+ 
++class SFTKLConfig(BaseConfig):
++    """KL(policy || reference) penalty added to the SFT loss on the same tokens as the CE.
++
++    The reference is the base model: LoRA adapters are switched off for one extra no-grad forward per
++    micro batch, so LoRA is required. The KL is exact over the full vocabulary (not a sampled estimate):
++    on off-policy SFT data a target-token log-ratio would only rescale the CE term.
++    """
++
++    coef: Annotated[float, Field(ge=0.0, description="Weight of the per-token KL term relative to the per-token CE.")]
++    chunk_size: Annotated[
++        int, Field(ge=1, description="Labelled tokens per chunk when materialising logits for CE + KL.")
++    ] = 1024
++
++
+ class SFTExperimentalConfig(BaseConfig):
+     """Experimental features for SFT training."""
+ 
+@@ -194,6 +208,9 @@ class SFTConfig(BaseConfig):
+     # Optional validation configuration
+     val: SFTValConfig | None = None
+ 
++    # Optional KL-to-reference penalty (requires LoRA; overrides loss_impl with the chunked CE+KL head)
++    kl: SFTKLConfig | None = None
++
+     # The optimizer configuration
+     optim: OptimizerConfig = AdamWConfig()
+ 
+@@ -428,6 +445,15 @@ class SFTConfig(BaseConfig):
+             )
+         return self
+ 
++    @model_validator(mode="after")
++    def validate_kl(self):
++        if self.kl is not None:
++            if not self.model.lora:
++                raise ValueError("kl requires model.lora: the reference is the model with its adapters switched off.")
++            if self.model.cp > 1:
++                raise ValueError("kl does not support context parallelism (cp > 1).")
++        return self
++
+     @model_validator(mode="after")
+     def validate_lora_adapter_saving(self):
+         if self.ckpt and self.ckpt.weights and self.ckpt.weights.save_adapter_separately:
+diff --git a/src/prime_rl/trainer/ckpt.py b/src/prime_rl/trainer/ckpt.py
+index 296554e0e..4d1ae0e5e 100644
+--- a/src/prime_rl/trainer/ckpt.py
++++ b/src/prime_rl/trainer/ckpt.py
+@@ -279,6 +279,17 @@ class CheckpointManager:
+         self.ckpt_steps = [step for step in self.ckpt_steps if step in steps_to_keep]
+ 
+ 
++def _qwen3_5_hub_keys(state_dict: dict) -> dict:
++    out = {}
++    for k, v in state_dict.items():
++        while k.startswith("model.language_model.language_model."):
++            k = "model." + k[len("model.language_model."):]
++        if k.startswith("model.language_model.visual."):
++            k = "model.visual." + k[len("model.language_model.visual."):]
++        out[k] = v
++    return out
++
++
+ class WeightCheckpointManager:
+     """Utility class to save HF-compatible weight checkpoints."""
+ 
+@@ -426,6 +437,11 @@ class WeightCheckpointManager:
+             self.logger.debug("Reverting transformers internal format to HF hub format for weight checkpoint")
+             start_time = time.perf_counter()
+             state_dict = revert_weight_conversion(model, state_dict)
++            # Qwen3.5-family (Qwen3.8) multimodal checkpoints come back with the prefix applied repeatedly
++            # ("model.language_model.language_model.language_model.layers..", "model.language_model.visual..");
++            # vLLM and HF expect the hub names ("model.language_model.layers..", "model.visual..").
++            if getattr(model.config, "model_type", None) == "qwen3_5":
++                state_dict = _qwen3_5_hub_keys(state_dict)
+             self.logger.debug(f"Reverted to HF hub format in {time.perf_counter() - start_time:.2f} seconds")
+ 
+         # Save weight checkpoint on master rank
+diff --git a/src/prime_rl/trainer/model.py b/src/prime_rl/trainer/model.py
+index 910a978a6..a3ca0b147 100644
+--- a/src/prime_rl/trainer/model.py
++++ b/src/prime_rl/trainer/model.py
+@@ -10,6 +10,7 @@ from typing import cast
+ os.environ.setdefault("USE_HUB_KERNELS", "NO")
+ 
+ import torch
++from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
+ import torch._dynamo
+ import torch.nn as nn
+ from beartype import beartype as typechecker
+@@ -182,7 +183,19 @@ def _patch_qwen3_5_linear_attn_varlen():
+                 s, e = cu[i], cu[i + 1]
+                 if s == e:
+                     continue
+-                conv_outs.append(self.conv1d(mixed_qkv[:, :, s:e])[:, :, : e - s])
++                seg = mixed_qkv[:, :, s:e]
++                k = self.conv1d.kernel_size[0]
++                if e - s < k:
++                    # A pack filled to seq_len-1 leaves a 1-token padding segment. cuDNN needs a lazily dlopen'ed
++                    # engine for such sub-kernel-length inputs, and in the trainer that load fails
++                    # (CUDNN_STATUS_SUBLIBRARY_LOADING_FAILED, fwd or bwd) -> one rank dies -> NCCL hang. Same causal
++                    # depthwise conv, elementwise (fwd and w-grad bit-identical; x-grad within 1 bf16 ulp).
++                    w = self.conv1d.weight
++                    xp = F.pad(seg, (k - 1, 0))
++                    out = sum(xp[:, :, j : j + e - s].float() * w[:, 0, j].float().view(1, -1, 1) for j in range(k))
++                    conv_outs.append(out.to(seg.dtype))
++                else:
++                    conv_outs.append(self.conv1d(seg)[:, :, : e - s])
+             mixed_qkv = F.silu(torch.cat(conv_outs, dim=-1))
+ 
+         mixed_qkv = mixed_qkv.transpose(1, 2)
+@@ -423,17 +436,24 @@ def get_model(
+ 
+     is_vlm_training = config.vlm is not None
+ 
+-    if "Qwen3.5" in config.name or "qwen3_5" in config.name.lower():
+-        _patch_qwen3_5_text_position_ids()
+-        _patch_qwen3_5_moe_conversion_mapping()
+-        _patch_qwen3_5_linear_attn_varlen()
+-
+     model_config = cast(
+         PretrainedConfig,
+         AutoConfig.from_pretrained(
+             config.name, attn_implementation=config.attn, trust_remote_code=config.trust_remote_code
+         ),
+     )
++
++    # Gate on the architecture, not the name: Qwen/Qwen3.8-27B is model_type "qwen3_5" but its name does not
++    # contain "Qwen3.5", and without these patches packed batches leak GatedDeltaNet state across samples.
++    if (
++        "Qwen3.5" in config.name
++        or "qwen3_5" in config.name.lower()
++        or getattr(model_config, "model_type", "").startswith("qwen3_5")
++    ):
++        logger.info("Applying Qwen3.5-family patches (text position_ids, conversion mapping, varlen linear attention)")
++        _patch_qwen3_5_text_position_ids()
++        _patch_qwen3_5_moe_conversion_mapping()
++        _patch_qwen3_5_linear_attn_varlen()
+     model_config.use_cache = False
+     is_vlm_arch = is_vlm_architecture(model_config)
+ 
+@@ -836,10 +856,22 @@ def can_reinit_empty_buffers(model: nn.Module):
+     if set(buffer_names) == gemma3_buffers:
+         return True
+ 
++    # Qwen3.5 family (Qwen3.8): text M-RoPE (inv_freq + original_inv_freq) and the vision tower's RoPE. Without this the
++    # model falls back to a full CPU copy per rank, which in fp32 (full FT) exceeds host RAM on 8 ranks (2026-10-13).
++    if set(buffer_names) == _QWEN3_5_BUFFERS:
++        return True
++
+     get_logger().warning(f"Model cannot be loaded using meta device because of buffers: {buffer_names}")
+     return False
+ 
+ 
++_QWEN3_5_BUFFERS = {
++    "model.visual.rotary_pos_emb.inv_freq",
++    "model.language_model.rotary_emb.inv_freq",
++    "model.language_model.rotary_emb.original_inv_freq",
++}
++
++
+ def fix_model_post_empty(model: nn.Module):
+     buffer_names = [name for name, _ in model.named_buffers()]
+     # HF standard transformer model
+@@ -860,6 +892,16 @@ def fix_model_post_empty(model: nn.Module):
+         rotary_emb.inv_freq.copy_(inv_freq)
+         if "model.rotary_emb.original_inv_freq" in buffer_names:
+             rotary_emb.original_inv_freq.copy_(inv_freq)
++    # Qwen3.5 family: recompute exactly as Qwen3_5TextRotaryEmbedding / Qwen3_5VisionRotaryEmbedding.__init__ do
++    if set(buffer_names) == _QWEN3_5_BUFFERS:
++        text = model.model.language_model.rotary_emb
++        inv_freq, text.attention_scaling = text.compute_default_rope_parameters(text.config, text.inv_freq.device) \
++            if text.rope_type == "default" else ROPE_INIT_FUNCTIONS[text.rope_type](text.config, text.inv_freq.device)
++        text.inv_freq.copy_(inv_freq)
++        text.original_inv_freq.copy_(inv_freq)
++        vis = model.model.visual.rotary_pos_emb
++        dim = 2 * vis.inv_freq.numel()
++        vis.inv_freq.copy_(1.0 / (10000.0 ** (torch.arange(0, dim, 2, dtype=torch.float, device=vis.inv_freq.device) / dim)))
+     # Gemma3 local rotary emb
+     if "model.rotary_emb_local.inv_freq" in buffer_names:
+         rotary_emb_local = model.model.rotary_emb_local
+diff --git a/src/prime_rl/trainer/models/layers/lm_head.py b/src/prime_rl/trainer/models/layers/lm_head.py
+index 84556425a..bb9722650 100644
+--- a/src/prime_rl/trainer/models/layers/lm_head.py
++++ b/src/prime_rl/trainer/models/layers/lm_head.py
+@@ -5,6 +5,7 @@ from typing import TypedDict
+ 
+ import torch
+ import torch.nn as nn
++import torch.utils.checkpoint
+ from torch import Tensor
+ 
+ from prime_rl.utils.logger import get_logger
+@@ -146,6 +147,91 @@ class QuackFusedCrossEntropyOutputLinear(torch.nn.Linear):
+         return PrimeLmOutput(loss=loss)
+ 
+ 
++def _ce_kl_chunk(
++    hidden: Tensor, weight: Tensor, labels: Tensor, ref_hidden: Tensor | None
++) -> tuple[Tensor, Tensor]:
++    """Summed CE and summed full-vocab KL(policy || reference) over one chunk of tokens."""
++    logp = torch.log_softmax((hidden @ weight.t()).float(), dim=-1)
++    ce = -logp.gather(-1, labels.unsqueeze(-1)).sum()
++    if ref_hidden is None:
++        return ce, torch.zeros((), device=ce.device, dtype=ce.dtype)
++    with torch.no_grad():
++        logr = torch.log_softmax((ref_hidden @ weight.t()).float(), dim=-1)
++    kl = (logp.exp() * (logp - logr)).sum()
++    return ce, kl
++
++
++class FusedCEKLOutputLinear(torch.nn.Linear):
++    """lm_head for SFT with a KL penalty toward a reference policy.
++
++    The reference shares this lm_head (LoRA never adapts it), so the reference distribution
++    is fully determined by the reference's final hidden states. The trainer obtains those with
++    a no-grad forward in which LoRA is switched off and this head in `capture_hidden` mode, then
++    sets `ref_hidden` for the policy forward.
++
++    The policy forward returns loss = sum(CE) + kl_coef * sum(KL) over labelled tokens. Logits are
++    only ever materialised for `chunk_size` labelled tokens at a time, and each chunk is
++    activation-checkpointed, so the [N, V] logits never exist in full. Detached per-call sums are
++    left on `last_ce_sum` / `last_kl_sum` for logging.
++    """
++
++    IGNORE_INDEX = FUSED_CE_IGNORE_INDEX
++
++    def __init__(self, in_features: int, out_features: int, chunk_size: int = 1024, kl_coef: float = 0.0):
++        super().__init__(in_features, out_features, bias=False)
++        self.chunk_size = chunk_size
++        self.kl_coef = kl_coef
++        self.capture_hidden = False
++        self.captured_hidden: Tensor | None = None
++        self.ref_hidden: Tensor | None = None
++        self.last_ce_sum: Tensor | None = None
++        self.last_kl_sum: Tensor | None = None
++
++    def forward(
++        self,
++        hidden_states: torch.Tensor,
++        labels: torch.Tensor | None = None,
++        temperature: Tensor | None = None,
++    ) -> PrimeLmOutput:
++        if self.capture_hidden:
++            self.captured_hidden = hidden_states.detach()
++            return PrimeLmOutput()
++        if labels is None:
++            return PrimeLmOutput(logits=super().forward(hidden_states))
++
++        h = hidden_states.shape[-1]
++        hidden_flat = hidden_states.reshape(-1, h)
++        labels_flat = labels.reshape(-1)
++        idx = (labels_flat != self.IGNORE_INDEX).nonzero(as_tuple=True)[0]
++        hidden_sel = hidden_flat.index_select(0, idx)
++        labels_sel = labels_flat.index_select(0, idx)
++        ref_sel = None
++        if self.ref_hidden is not None:
++            assert self.ref_hidden.shape == hidden_states.shape, (
++                f"ref_hidden {tuple(self.ref_hidden.shape)} != hidden {tuple(hidden_states.shape)}"
++            )
++            ref_sel = self.ref_hidden.reshape(-1, h).index_select(0, idx)
++
++        ce_sum = hidden_states.new_zeros((), dtype=torch.float32)
++        kl_sum = hidden_states.new_zeros((), dtype=torch.float32)
++        for start in range(0, idx.numel(), self.chunk_size):
++            end = start + self.chunk_size
++            ce, kl = torch.utils.checkpoint.checkpoint(
++                _ce_kl_chunk,
++                hidden_sel[start:end],
++                self.weight,
++                labels_sel[start:end],
++                ref_sel[start:end] if ref_sel is not None else None,
++                use_reentrant=False,
++            )
++            ce_sum = ce_sum + ce
++            kl_sum = kl_sum + kl
++
++        self.last_ce_sum = ce_sum.detach()
++        self.last_kl_sum = kl_sum.detach()
++        return PrimeLmOutput(loss=ce_sum + self.kl_coef * kl_sum)
++
++
+ def _online_logsumexp_and_weighted_update(
+     m: torch.Tensor, s: torch.Tensor, t: torch.Tensor, chunk_logits: torch.Tensor
+ ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+@@ -287,6 +373,7 @@ def inject_prime_lm_head(
+             - False: no fusion
+             - True or "liger": Liger kernel fusion
+             - "quack": quack-kernels fusion (chunked linear + CE with CuTe DSL kernels)
++            - "kl": chunked CE + KL-to-reference head for SFT (FusedCEKLOutputLinear)
+     """
+     # Guards so we have nicer error messages when a non-standard model is used
+     assert hasattr(model, "model"), f"model doesnt have backbone in model.model:\n{model}"
+@@ -315,7 +402,13 @@ def inject_prime_lm_head(
+ 
+     # Replace the lm_head with the appropriate wrapper
+     old_lm_head = model.lm_head
+-    if fused_cross_entropy == "quack":
++    if fused_cross_entropy == "kl":
++        logger.info("Injecting chunked CE + KL-to-reference LM head")
++        model.lm_head = FusedCEKLOutputLinear(
++            in_features=old_lm_head.in_features,
++            out_features=old_lm_head.out_features,
++        )
++    elif fused_cross_entropy == "quack":
+         logger.info("Injecting fused cross-entropy LM head (quack-kernels)")
+         model.lm_head = QuackFusedCrossEntropyOutputLinear(
+             in_features=old_lm_head.in_features,
+diff --git a/src/prime_rl/trainer/sft/data.py b/src/prime_rl/trainer/sft/data.py
+index 253acadaa..e6f40d1bc 100644
+--- a/src/prime_rl/trainer/sft/data.py
++++ b/src/prime_rl/trainer/sft/data.py
+@@ -221,6 +221,9 @@ class SFTDataset(StatefulIterableDataset):
+ 
+         def should_mask(message: dict) -> bool:
+             assert "role" in message, "Message must have a role"
++            # Per-message opt-out (rlm-train reverify data): a message with train=False is context only
++            if message.get("train") is False:
++                return False
+             match message["role"]:
+                 case "user":
+                     return True if self.loss_mask_config.user else False
+@@ -357,25 +360,48 @@ class CatDataset(StatefulIterableDataset):
+     def load_state_dict(self, state_dict: dict):
+         self.dataset.load_state_dict(state_dict["dataset"])
+ 
++    def _pad(self, packed_samples: dict, seq_len: int) -> dict:
++        """Pad a packed buffer to self.seq_len with a separate, fully loss-masked segment."""
++        n = self.seq_len - seq_len
++        if n > 0:
++            for key in list(packed_samples):
++                if key == "loss_mask":
++                    packed_samples[key].extend([False] * n)
++                elif key == "position_ids":
++                    # restart positions so varlen attention treats the padding as its own sequence
++                    packed_samples[key].extend(range(n))
++                else:
++                    packed_samples[key].extend([0] * n)
++        return packed_samples
++
+     def __iter__(self):
++        # Never split a sample across the seq_len boundary: the upstream version truncated the buffer at
++        # seq_len, silently dropping the tail of the last sample in every pack (for RLM trajectories that
++        # tail is the answer-submission turn). A sample that does not fit closes the buffer, which is padded.
+         packed_samples, seq_len = defaultdict(list), 0
+         for sample in self.dataset:
+-            # Add sample to packed samples
++            len_sample = len(sample["input_ids"])
++            if len_sample > self.seq_len:
++                sample = {key: value[: self.seq_len] for key, value in sample.items()}
++                len_sample = self.seq_len
++
++            if seq_len > 0 and seq_len + len_sample > self.seq_len:
++                yield self._pad(packed_samples, seq_len)
++                packed_samples, seq_len = defaultdict(list), 0
++
+             for key, value in sample.items():
+                 assert isinstance(value, list), f"Value for key {key} must be a list"
+                 packed_samples[key].extend(value)
++            seq_len += len_sample
+ 
+-            # Update sequence length
+-            seq_len += len(sample["input_ids"])
+-
+-            # If batch is full, truncate and yield it
+-            if seq_len >= self.seq_len:
+-                for key, value in packed_samples.items():
+-                    assert isinstance(value, list), f"Value for key {key} must be a list"
+-                    packed_samples[key] = value[: self.seq_len]
++            if seq_len == self.seq_len:
+                 yield packed_samples
+                 packed_samples, seq_len = defaultdict(list), 0
+ 
++        # Finite datasets (validation, max_epochs=1): keep the last partial buffer instead of dropping it
++        if seq_len > 0:
++            yield self._pad(packed_samples, seq_len)
++
+ 
+ class StackDataset(StatefulIterableDataset):
+     """A dataset that stacks samples into batch with a fixed area"""
+diff --git a/src/prime_rl/trainer/sft/train.py b/src/prime_rl/trainer/sft/train.py
+index 1c12b342e..7294cd9a8 100644
+--- a/src/prime_rl/trainer/sft/train.py
++++ b/src/prime_rl/trainer/sft/train.py
+@@ -22,6 +22,7 @@ from prime_rl.configs.sft import SFTConfig
+ from prime_rl.utils.cp import setup_cp_params, shard_for_cp
+ from prime_rl.trainer.runs import Progress, get_multi_run_manager, setup_multi_run_manager
+ from prime_rl.trainer.models.layers.lora import set_lora_num_tokens
++from prime_rl.trainer.models.layers.lora.base import get_multilora_scaling, set_multilora_scaling
+ from prime_rl.utils.logger import setup_logger
+ from prime_rl.trainer.optim import setup_optimizer
+ from prime_rl.trainer.scheduler import setup_scheduler
+@@ -137,7 +138,13 @@ def train(config: SFTConfig):
+     logger.info(f"Initializing model ({config.model})")
+     loading_from_ckpt_later = config.ckpt and checkpoint_step is not None
+     fused_cross_entropy: bool | str = {"liger_fused": "liger", "quack_fused": "quack"}.get(config.loss_impl, False)
++    if config.kl is not None:
++        fused_cross_entropy = "kl"
++        logger.info(f"KL-to-reference penalty enabled (coef={config.kl.coef}); loss_impl={config.loss_impl} is ignored")
+     model = setup_model(config.model, parallel_dims, loading_from_ckpt_later, fused_cross_entropy=fused_cross_entropy)
++    if config.kl is not None:
++        model.lm_head.kl_coef = config.kl.coef
++        model.lm_head.chunk_size = config.kl.chunk_size
+ 
+     if parallel_dims.cp_enabled:
+         from prime_rl.utils.cp import assert_cp_style_supports_model
+@@ -262,6 +269,9 @@ def train(config: SFTConfig):
+ 
+         token_count = loss_mask.sum(dtype=torch.int64)
+ 
++        if config.kl is not None:
++            return compute_kl_loss(input_ids, position_ids, target_ids, loss_mask, token_count)
++
+         with maybe_activation_offloading(config.model.ac_offloading):
+             if config.loss_impl in ("liger_fused", "quack_fused"):
+                 masked_target_ids = target_ids.clone()
+@@ -279,6 +289,42 @@ def train(config: SFTConfig):
+         del out
+         return loss_sum, token_count
+ 
++    # Per-call CE / KL sums, accumulated by the train and val loops (only populated when config.kl is set)
++    kl_stats = {"ce": torch.tensor(0.0, device="cuda"), "kl": torch.tensor(0.0, device="cuda")}
++
++    def compute_kl_loss(input_ids, position_ids, target_ids, loss_mask, token_count):
++        """CE + kl.coef * KL(policy || base) summed over unmasked tokens.
++
++        The base distribution comes from a no-grad forward with every LoRA scaling factor zeroed (the
++        shared tensor is edited in place, so all adapter layers see it), which leaves the frozen base
++        weights exactly. The lm_head is not adapted, so the base's final hidden states are all the
++        policy forward needs to evaluate the reference logits chunk by chunk.
++        """
++        head = model.lm_head
++        scaling = get_multilora_scaling()
++        saved_scaling = scaling.clone()
++        try:
++            set_multilora_scaling(torch.zeros_like(saved_scaling))
++            head.capture_hidden = True
++            with torch.no_grad():
++                forward(model, input_ids, position_ids)
++        finally:
++            head.capture_hidden = False
++            set_multilora_scaling(saved_scaling)
++        head.ref_hidden, head.captured_hidden = head.captured_hidden, None
++
++        masked_target_ids = target_ids.clone()
++        masked_target_ids[~loss_mask] = FUSED_CE_IGNORE_INDEX
++        try:
++            with maybe_activation_offloading(config.model.ac_offloading):
++                out = forward(model, input_ids, position_ids, labels=masked_target_ids)
++        finally:
++            head.ref_hidden = None
++        if not torch.isnan(head.last_ce_sum):
++            kl_stats["ce"] += head.last_ce_sum
++            kl_stats["kl"] += head.last_kl_sum
++        return out["loss"], token_count
++
+     maybe_record_function = nullcontext
+ 
+     def run_eval_loop(data_iter):
+@@ -287,8 +333,20 @@ def train(config: SFTConfig):
+         total_token_count = torch.tensor(0, dtype=torch.int64, device="cuda")
+         nan_count = torch.tensor(0, device="cuda")
+ 
++        # Ranks pack their val shards into different numbers of micro batches. Every forward runs FSDP
++        # collectives, so a rank that runs out early would leave the others hanging in an all-gather until
++        # the NCCL watchdog fires. Pad every rank to the global max with fully loss-masked dummy batches.
++        micro_batches = list(data_iter)
++        n_batches = torch.tensor(len(micro_batches), device="cuda")
++        dist.all_reduce(n_batches, op=dist.ReduceOp.MAX)
++        if micro_batches and len(micro_batches) < n_batches.item():
++            dummy = {k: v.clone() for k, v in micro_batches[0].items()}
++            dummy["loss_mask"] = torch.zeros_like(dummy["loss_mask"])
++            micro_batches += [dummy] * (n_batches.item() - len(micro_batches))
++        assert len(micro_batches) == n_batches.item(), "a rank has no validation data at all"
++
+         with torch.no_grad():
+-            for micro_batch in data_iter:
++            for micro_batch in micro_batches:
+                 loss_sum, token_count = compute_loss(micro_batch)
+                 if not torch.isnan(loss_sum.detach()):
+                     total_loss_sum += loss_sum.detach()
+@@ -301,7 +359,7 @@ def train(config: SFTConfig):
+         dist.all_reduce(nan_count, op=dist.ReduceOp.SUM)
+ 
+         mean_loss = (total_loss_sum / total_token_count).item() if total_token_count.item() > 0 else float("nan")
+-        return mean_loss, nan_count.item()
++        return mean_loss, nan_count.item(), total_token_count.item()
+ 
+     def run_validation(step: int) -> None:
+         val_dataset = setup_dataset(
+@@ -315,14 +373,28 @@ def train(config: SFTConfig):
+         val_dataloader = setup_dataloader(val_dataset, config.val.data)
+ 
+         # No train/eval switch: no dropout in these models, and toggling would trigger torch.compile recompilation
+-        mean_loss, nan_count = run_eval_loop(val_dataloader)
++        # Validation runs mid-step (between backward and optimizer step), so park the step's KL stats meanwhile
++        parked = {k: v.clone() for k, v in kl_stats.items()}
++        for v in kl_stats.values():
++            v.zero_()
++        mean_loss, nan_count, val_tokens = run_eval_loop(val_dataloader)
++        metrics = {"val/loss": mean_loss, "step": step}
++        if config.kl is not None and val_tokens > 0:
++            # val/loss is CE + coef*KL; val/ce is the number comparable across coefs and to the base model
++            sums = torch.stack([kl_stats["ce"], kl_stats["kl"]])
++            dist.all_reduce(sums, op=dist.ReduceOp.SUM, group=dp_cp_group)
++            metrics["val/ce"] = sums[0].item() / val_tokens
++            metrics["val/kl"] = sums[1].item() / val_tokens
++        for k, v in parked.items():
++            kl_stats[k].copy_(v)
+         if nan_count > 0:
+             logger.warning(f"Validation at step {step}: {nan_count} batches had NaN loss")
+         if mean_loss != mean_loss:
+             logger.warning(f"Validation at step {step} had no valid tokens")
+         else:
+-            logger.success(f"Validation | Step {step} | Loss: {mean_loss:.4f}")
+-        monitor.log({"val/loss": mean_loss, "step": step}, step=step)
++            extra = f" | CE: {metrics['val/ce']:.4f} | KL: {metrics['val/kl']:.5f}" if "val/kl" in metrics else ""
++            logger.success(f"Validation | Step {step} | Loss: {mean_loss:.4f}{extra}")
++        monitor.log(metrics, step=step)
+ 
+     gc_handler = GarbageCollection(config.gc.interval) if config.gc else None
+ 
+@@ -378,6 +450,8 @@ def train(config: SFTConfig):
+         step_start_time = time.perf_counter()
+         forward_backward_start_time = time.perf_counter()
+ 
++        for v in kl_stats.values():
++            v.zero_()
+         step_loss_sum = torch.tensor(0.0, device="cuda")
+         step_local_token_count = torch.tensor(0, dtype=torch.int64, device="cuda")
+         nan_loss_count = torch.tensor(0, device="cuda")
+@@ -541,6 +615,12 @@ def train(config: SFTConfig):
+             "loss/nan_count": nan_loss_count,
+             "step": progress.step,
+         }
++        if config.kl is not None and global_token_count_val > 0:
++            sums = torch.stack([kl_stats["ce"], kl_stats["kl"]])
++            dist.all_reduce(sums, op=dist.ReduceOp.SUM, group=dp_cp_group)
++            loss_log_metrics["loss/ce"] = sums[0].item() / global_token_count_val
++            loss_log_metrics["loss/kl"] = sums[1].item() / global_token_count_val
++            logger.info(f"Step {progress.step} | CE: {loss_log_metrics['loss/ce']:.4f} | KL: {loss_log_metrics['loss/kl']:.5f}")
+         # Log tensor stats
+         monitor.log(loss_log_metrics, step=progress.step)
+ 
+@@ -601,8 +681,41 @@ def train(config: SFTConfig):
+             logger.info(f"Benchmark results written to {config.bench.output_json}")
+ 
+ 
++def _preload_cudnn_sublibs() -> None:
++    """dlopen every cuDNN sub-library now. cuDNN loads engine libs lazily on first use of a new conv shape; mid-run
++    that dlopen failed (CUDNN_STATUS_SUBLIBRARY_LOADING_FAILED, one rank dead -> 30 min NCCL hang), plausibly from
++    mmap exhaustion (vm.max_map_count = 65530 on some hosts). Loading them while the process is small avoids it."""
++    import ctypes
++    import glob
++    import os
++
++    try:
++        import nvidia.cudnn
++
++        libdirs = [os.path.join(d, "lib") for d in nvidia.cudnn.__path__]  # namespace package: no __file__
++    except ImportError:
++        return
++    # Sub-libraries depend on each other (cnn needs graph, engines need cnn); retry until no progress.
++    todo = sorted(f for d in libdirs for f in glob.glob(os.path.join(d, "libcudnn*.so*")))
++    errors: dict[str, str] = {}
++    while todo:
++        failed = []
++        for lib in todo:
++            try:
++                ctypes.CDLL(lib, mode=ctypes.RTLD_GLOBAL)
++            except OSError as e:
++                failed.append(lib)
++                errors[lib] = str(e)
++        if len(failed) == len(todo):
++            break
++        todo = failed
++    for lib in todo:
++        print(f"[cudnn preload] FAILED {lib}: {errors[lib]}", flush=True)
++
++
+ def main():
+     set_proc_title("SFTTrainer")
++    _preload_cudnn_sublibs()
+     train(cli(SFTConfig))
+ 
+ 
+diff --git a/src/prime_rl/utils/chat_template.py b/src/prime_rl/utils/chat_template.py
+index a30c5e726..cc71bbb43 100644
+--- a/src/prime_rl/utils/chat_template.py
++++ b/src/prime_rl/utils/chat_template.py
+@@ -1,4 +1,5 @@
+ import json
++from jinja2.exceptions import TemplateError
+ from typing import Any, Callable
+ 
+ from transformers.tokenization_utils import PreTrainedTokenizer
+@@ -120,6 +121,10 @@ def build_incremental_token_mask(
+     token_mask: list[bool] = []
+     prev_ids: list[int] = []
+     prev_len = 0
++    # Some templates (Qwen3.5 family) raise "No user query found" on a prefix without a user turn, e.g.
++    # [system] alone. Defer such leading prefixes and render them together with the first user turn;
++    # that is only sound when the deferred messages share the user turn's mask.
++    deferred_masks: list[bool] = []
+ 
+     for idx, message in enumerate(messages):
+         role = message.get("role")
+@@ -127,14 +132,28 @@ def build_incremental_token_mask(
+             if messages[idx + 1].get("role") == "tool":
+                 continue
+ 
+-        cur_ids = render_messages(
+-            tokenizer,
+-            messages[: idx + 1],
+-            tools=tools,
+-            chat_template_kwargs=chat_template_kwargs,
+-            add_generation_prompt=should_add_generation_prompt(messages, idx),
+-            processor=processor,
+-        )
++        try:
++            cur_ids = render_messages(
++                tokenizer,
++                messages[: idx + 1],
++                tools=tools,
++                chat_template_kwargs=chat_template_kwargs,
++                add_generation_prompt=should_add_generation_prompt(messages, idx),
++                processor=processor,
++            )
++        except TemplateError:
++            no_user_yet = not any(m.get("role") == "user" for m in messages[: idx + 1])
++            if not (no_user_yet and idx + 1 < len(messages)):
++                raise
++            deferred_masks.append(role_to_mask(message))
++            continue
++        if deferred_masks:
++            if any(m != role_to_mask(message) for m in deferred_masks):
++                raise IncrementalTokenizationError(
++                    f"Leading messages before the first user turn have a different loss mask than message {idx} "
++                    f"(role={role}); this chat template cannot render them on their own."
++                )
++            deferred_masks = []
+ 
+         if prev_ids != cur_ids[:prev_len]:
+             raise IncrementalTokenizationError(

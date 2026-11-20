@@ -1,0 +1,25 @@
+diff --git a/src/prime_rl/orchestrator/envs.py b/src/prime_rl/orchestrator/envs.py
+index 1de52994a..52cb171ba 100644
+--- a/src/prime_rl/orchestrator/envs.py
++++ b/src/prime_rl/orchestrator/envs.py
+@@ -311,6 +311,20 @@ class EvalEnv(Env):
+         if could_be_binary:
+             assert pass_at_k is not None
+             eval_metrics.update(pd.Series(pass_at_k.mean()).to_dict())
++        # Per-rollout rubric metrics (e.g. tom_dense/tom_strict) aggregated as
++        # avg@k — mirrors the train path, which logs every metric column. Without
++        # this, only the weighted `reward` reaches wandb for evals, so side-channel
++        # metrics (dense reward while training on strict, sub-call counts, etc.)
++        # are invisible on the eval dashboard.
++        metric_rows = [{**(o.get("metrics") or {}), "example_id": o["example_id"]} for o in successful_outputs]
++        eval_metrics_df = pd.DataFrame(metric_rows)
++        for col in eval_metrics_df.columns:
++            if col == "example_id":
++                continue
++            numeric = pd.to_numeric(eval_metrics_df[col], errors="coerce")
++            if numeric.notna().any():
++                per_example = numeric.groupby(eval_metrics_df["example_id"]).mean()
++                eval_metrics[f"{col}/avg@{rollouts_per_example}"] = float(per_example.mean())
+         eval_metrics = {f"eval/{self.name}/{key}": v for key, v in eval_metrics.items()}
+         eval_metrics.update({"progress/ckpt_step": ckpt_step, "step": step})
+         monitor.log(eval_metrics, step=step)

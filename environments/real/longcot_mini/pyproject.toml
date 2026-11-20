@@ -1,0 +1,25 @@
+[project]
+name = "longcot-mini-real"
+version = "0.1.0"
+description = "LongCoT 'easy' difficulty slice (~500 examples) wired through RLMTrainEnv."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "rlm-train",
+    "verifiers>=0.1.11",
+    "longcot-real",
+]
+
+[tool.uv.sources]
+rlm-train = { path = "../../..", editable = true }
+longcot-real = { path = "../longcot", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["longcot_mini_real"]
+
+[project.entry-points."verifiers.environments"]
+longcot-mini-real = "longcot_mini_real:load_environment"

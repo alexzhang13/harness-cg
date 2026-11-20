@@ -1,0 +1,252 @@
+# Table main-composition | Qwen3.8-27B + RL (synthetic tasks), full fine-tuning, 150 steps
+
+output_dir = "outputs/rl-8task-27b-fullft"
+max_steps = 150
+seq_len = 49152
+max_async_level = 1
+
+[weight_broadcast]
+type = "nccl"
+
+[model]
+name = "Qwen/Qwen3.8-27B"
+
+[tokenizer]
+chat_template = "${REPO}/training/qwen3.8_nothink_chat_template.jinja"
+
+[wandb]
+project = "rlm-8task-rl"
+name = "rl-8task-27b-fullft"
+shared = false
+
+[deployment]
+gpus_per_node = 8
+num_train_gpus = 6
+num_infer_gpus = 2
+
+[trainer]
+
+[trainer.model]
+fused_lm_head_token_chunk_size = "auto"
+optim_cpu_offload = true
+optimization_dtype = "bfloat16"
+reduce_dtype = "bfloat16"
+
+[trainer.model.ac]
+mode = "full"
+freq = 1
+
+[trainer.model.ac_offloading]
+pin_memory = false
+max_inflight_activations = 5
+
+[trainer.ckpt]
+interval = 5
+keep_last = 1
+weights_only = true
+
+[trainer.optim]
+lr = 5e-6
+
+[inference]
+gpu_memory_utilization = 0.85
+vllm_extra = { max_num_seqs = 128, gdn_prefill_backend = "triton", default_chat_template_kwargs = { enable_thinking = false } }
+
+[inference.model]
+max_model_len = 98304
+enforce_eager = false
+
+[inference.parallel]
+tp = 2
+dp = 1
+
+[orchestrator]
+batch_size = 112
+rollouts_per_example = 8
+oversampling_factor = 2.0
+max_off_policy_steps = 4
+max_error_reschedule_attempts = 3
+use_renderer = true
+
+[orchestrator.renderer]
+name = "qwen3.5"
+
+[orchestrator.buffer]
+online_difficulty_filtering = true
+easy_threshold = 1.0
+hard_threshold = 0.0
+
+[orchestrator.advantage]
+[orchestrator.advantage.length_penalty]
+type = "turns"
+
+[[orchestrator.filters]]
+type = "repetition"
+enforce = true
+window = 3000
+prob_threshold = 0.99
+
+[[orchestrator.filters]]
+type = "zero_advantage"
+enforce = true
+
+[orchestrator.ckpt]
+interval = 5
+keep_last = 1
+
+[orchestrator.train]
+max_retries = 2
+
+[orchestrator.train.sampling]
+max_completion_tokens = 6000
+
+[[orchestrator.train.env]]
+id = "rlstage-bcp"
+name = "bcp-synth-train"
+ratio = 0.125
+
+[orchestrator.train.env.args]
+split = "train"
+num_examples = 2000
+
+[[orchestrator.train.env]]
+id = "rlstage-ctc"
+name = "ctc-synth-train"
+ratio = 0.125
+
+[orchestrator.train.env.args]
+split = "train"
+num_examples = 2000
+seed = 7
+
+[[orchestrator.train.env]]
+id = "rlstage-elb"
+name = "elb-synth-train"
+ratio = 0.125
+
+[orchestrator.train.env.args]
+split = "train"
+num_examples = 4000
+
+[[orchestrator.train.env]]
+id = "rlstage-corpusqa"
+name = "cqa-synth-train-1m"
+ratio = 0.0625
+
+[orchestrator.train.env.args]
+split = "train"
+num_examples = 2000
+scale = "1m"
+
+[[orchestrator.train.env]]
+id = "rlstage-corpusqa"
+name = "cqa-synth-train-128k"
+ratio = 0.0625
+
+[orchestrator.train.env.args]
+split = "train"
+num_examples = 2000
+scale = "128k"
+
+[[orchestrator.train.env]]
+id = "rlstage-loogle"
+name = "loogle-synth-train"
+ratio = 0.125
+
+[orchestrator.train.env.args]
+split = "train"
+num_examples = 2000
+
+[[orchestrator.train.env]]
+id = "rlstage-oolong"
+name = "oolong-synth-train"
+ratio = 0.125
+
+[orchestrator.train.env.args]
+split = "train"
+num_examples = 2000
+
+[[orchestrator.train.env]]
+id = "rlstage-longreason"
+name = "longreason-synth-train"
+ratio = 0.125
+
+[orchestrator.train.env.args]
+split = "train"
+
+[[orchestrator.train.env]]
+id = "rlstage-obliq"
+name = "obliq-synth-train"
+ratio = 0.125
+
+[orchestrator.train.env.args]
+split = "train"
+num_examples = 2000
+
+[orchestrator.eval]
+interval = 20
+eval_base_model = true
+num_examples = 25
+rollouts_per_example = 1
+max_retries = 2
+
+[orchestrator.eval.sampling]
+max_completion_tokens = 6000
+extra_body = { chat_template_kwargs = { enable_thinking = false } }
+
+[[orchestrator.eval.env]]
+id = "ctcbench-real"
+name = "val-ctc-v1"
+num_examples = 25
+
+[orchestrator.eval.env.args]
+task = "outlier,contradiction_iid,grouping,reorder,hotpotqa"
+split = "val"
+split_version = "v1"
+per_task_examples = 5
+seed = 7
+max_iterations = 30
+
+[[orchestrator.eval.env]]
+id = "corpusqa-real"
+name = "val-cqa-128k-financial"
+num_examples = 13
+
+[orchestrator.eval.env.args]
+set_name = "128k"
+domain = "financial_en"
+num_examples = 13
+seed = 7
+
+[[orchestrator.eval.env]]
+id = "corpusqa-real"
+name = "val-cqa-128k-education"
+num_examples = 12
+
+[orchestrator.eval.env.args]
+set_name = "128k"
+domain = "education_en"
+num_examples = 12
+seed = 7
+
+[[orchestrator.eval.env]]
+id = "rlstage-oolong-real-val"
+name = "val-oolong-real-c2"
+num_examples = 25
+
+[orchestrator.eval.env.args]
+num_examples = 25
+max_episodes = 3
+seed = 0
+
+[[orchestrator.eval.env]]
+id = "browsecomp-plus-real"
+name = "val-bcp-train25-wholecorpus"
+num_examples = 25
+
+[orchestrator.eval.env.args]
+split = "train"
+docs_per_query = "all"
+require_answerable = true
+num_examples = 25
+seed = 7

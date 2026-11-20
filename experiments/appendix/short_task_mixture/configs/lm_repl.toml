@@ -1,0 +1,188 @@
+# Table tab:generalization | LM + REPL trained on the six short tasks (1000 steps)
+
+output_dir = "outputs/short-mix/lm_repl"
+max_steps = 1000
+seq_len = 8192
+
+[model]
+name = "Qwen/Qwen3-30B-A3B-Instruct-2507"
+
+[wandb]
+project = "rlm-lengthgen"
+name = "lengthgen-mix-short-30b-1000-depth0"
+shared = false
+
+[deployment]
+gpus_per_node = 8
+num_train_gpus = 4
+num_infer_gpus = 4
+
+[trainer]
+
+[trainer.model]
+fused_lm_head_token_chunk_size = "auto"
+optimization_dtype = "bfloat16"
+reduce_dtype = "bfloat16"
+
+[trainer.model.ac]
+mode = "full"
+freq = 1
+
+[trainer.model.lora]
+rank = 32
+alpha = 64
+dropout = 0.0
+target_modules = [
+    "q_proj", "k_proj", "v_proj", "o_proj",
+    "gate_proj", "up_proj", "down_proj",
+]
+
+[trainer.ckpt]
+interval = 60
+keep_last = 2
+weights_only = false
+skip_gather_master_weights = true
+
+[trainer.optim]
+lr = 5e-5
+
+[inference]
+gpu_memory_utilization = 0.80
+
+[inference.model]
+max_model_len = 16384
+enforce_eager = false
+
+[inference.parallel]
+tp = 4
+dp = 1
+
+[orchestrator]
+batch_size = 64
+rollouts_per_example = 4
+max_inflight_rollouts = 32
+
+[[orchestrator.filters]]
+type = "gibberish"
+enforce = false
+
+[[orchestrator.filters]]
+type = "repetition"
+enforce = true
+window = 3000
+prob_threshold = 0.99
+
+[[orchestrator.filters]]
+type = "zero_advantage"
+enforce = true
+
+[orchestrator.ckpt]
+interval = 60
+keep_last = 2
+
+[orchestrator.train]
+max_retries = 2
+
+[orchestrator.train.sampling]
+max_completion_tokens = 4096
+extra_body = { enable_thinking = false }
+
+[[orchestrator.train.env]]
+id = "ada-leval-real"
+name = "adaleval-bestanswer-8k-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+task = "bestanswer"
+setting = "8k"
+num_examples = -1
+manifest_split = "train"
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+enable_sub_llm = false
+user_prologue = "There can be many candidates, so fan out over them in parallel to screen and narrow the list down to the few plausible ones, then decide which of those is the most suitable answer to the question."
+
+[[orchestrator.train.env]]
+id = "graphwalks-real"
+name = "graphwalks-short-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+split = "128k_and_shorter"
+num_examples = 512
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+enable_sub_llm = false
+
+[[orchestrator.train.env]]
+id = "longbenchpro-real"
+name = "longbenchpro-32k-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+language = "English"
+token_length = "32k"
+thinking = false
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+enable_sub_llm = false
+
+[[orchestrator.train.env]]
+id = "mrcr-v2-real"
+name = "mrcr-2ndl-32k-64k-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+needle_count = 2
+context_range = "32k-64k"
+num_examples = 512
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+enable_sub_llm = false
+
+[[orchestrator.train.env]]
+id = "oolong-real"
+name = "oolong-trec-32k-train"
+ratio = 0.1667
+
+[orchestrator.train.env.args]
+dataset_name = "trec_coarse"
+min_ctx = 32768
+max_ctx = 32768
+exclude_numeric = false
+num_examples = -1
+seed = 42
+max_iterations = 20
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+enable_sub_llm = false
+
+[[orchestrator.train.env]]
+id = "oolong-pairs-real"
+name = "oolong-pairs-8k-train"
+ratio = 0.1665
+
+[orchestrator.train.env.args]
+context_length = 8192
+num_examples = -1
+shuffle = true
+seed = 42
+max_iterations = 30
+sub_max_tokens = 4096
+min_iterations = 2
+min_subcall = 0
+max_sub_calls = 1000
+enable_sub_llm = false

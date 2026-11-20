@@ -1,0 +1,225 @@
+diff --git a/src/prime_rl/trainer/batch.py b/src/prime_rl/trainer/batch.py
+index e5a16ba05..ef9d4c9f4 100644
+--- a/src/prime_rl/trainer/batch.py
++++ b/src/prime_rl/trainer/batch.py
+@@ -195,11 +195,44 @@ def pad_micro_batch(micro_batch: MicroBatch, pad_to_multiple_of: int) -> MicroBa
+     return micro_batch
+ 
+ 
++DUMMY_BATCH_TOKENS = 256  # tiny zero-loss filler; multiple of any sane pad_to_multiple_of
++
++
+ def _make_dummy_batch(source: MicroBatch) -> MicroBatch:
+-    """Create a zero-loss dummy batch from an existing batch, preserving its modality."""
++    """Create a zero-loss dummy batch from an existing batch, preserving its modality.
++
++    FSDP needs every data rank to run the same NUMBER of micro batches, not the same
++    sizes. The dummy therefore keeps only ``DUMMY_BATCH_TOKENS`` tokens of a text-only
++    source (all per-token fields sliced consistently); a full-size copy of the first
++    (= largest, by first-fit-decreasing) bin cost a whole forward/backward of padding per
++    missing rank -- measured at 25-35 % of trainer time for 32-48 rollouts/step on 4 ranks.
++    Multimodal sources are copied whole (their vision tensors are not per-token sliceable).
++    """
+     dummy = copy.deepcopy(source)
+-    dummy.advantages = [0.0] * len(dummy.input_ids)
+-    dummy.loss_mask = [False] * len(dummy.input_ids)
++    n = len(dummy.input_ids)
++    if not _is_multimodal_sample(dummy) and n > DUMMY_BATCH_TOKENS:
++        k = DUMMY_BATCH_TOKENS
++        dummy.input_ids = dummy.input_ids[:k]
++        dummy.inference_logprobs = dummy.inference_logprobs[:k]
++        dummy.position_ids = list(range(k))
++        dummy.temperatures = dummy.temperatures[:k]
++        dummy.env_names = dummy.env_names[:k]
++        if dummy.teacher_logprobs is not None:
++            dummy.teacher_logprobs = dummy.teacher_logprobs[:k]
++        if dummy.routed_experts is not None:
++            dummy.routed_experts = dummy.routed_experts[:k]
++        if dummy.mm_token_type_ids is not None:
++            dummy.mm_token_type_ids = dummy.mm_token_type_ids[:k]
++        if dummy.lora_num_tokens is not None:
++            counts = list(dummy.lora_num_tokens)
++            if counts:
++                j = max(range(len(counts)), key=lambda i: counts[i])
++                counts = [0] * len(counts)
++                counts[j] = k
++            dummy.lora_num_tokens = counts
++        n = k
++    dummy.advantages = [0.0] * n
++    dummy.loss_mask = [False] * n
+     return dummy
+ 
+ 
+@@ -212,6 +245,93 @@ def _pad_group_for_distribution(group: list[MicroBatch], num_train_workers: int)
+     return group
+ 
+ 
++def _balance_text_micro_batches(
++    samples: list[tuple[int, MicroBatch]], max_seq_len: int, num_train_workers: int, num_loras: int
++) -> list[MicroBatch]:
++    """Pack text-only samples into a number of micro batches divisible by ``num_train_workers``
++    with BALANCED token counts, instead of first-fit-decreasing (minimal bins) + full-size dummies.
++
++    Why: every data rank runs the same number of micro batches and the step waits for the slowest
++    rank. FFD on ~32 samples of ~8k tokens gives e.g. 9 near-full 32k bins; with 4 ranks that is
++    3 bins on one rank and 2 (+ a dummy) on the others, so the step costs 3 full bins (~96k tokens
++    of forward/backward on the critical rank) although the ideal share is ~64k. Re-packing the same
++    samples into 12 bins of ~21k tokens gives every rank ~64k tokens (micro batches are
++    variable-length tensors; nothing is padded to seq_len).
++
++    Algorithm: FFD to learn the minimal bin count B; target = ceil(B / W) * W bins; assign samples
++    longest-first to the currently lightest bin that has room (LPT with capacity); if none has room,
++    open W more bins. Bins are handed out in snake order so each rank gets the same number of bins
++    and near-equal tokens. Returns bins in rank-strided order (index i -> rank i % W), or [] for
++    groups containing multimodal samples (caller falls back to FFD + dummies).
++    """
++    import math
++
++    if not samples or any(_is_multimodal_sample(s) for _, s in samples):
++        return []
++    if len({s.training_mode for _, s in samples}) > 1:
++        return []  # micro batches must not mix training modes; fall back to the FFD path
++    lens = sorted((len(s.input_ids) for _, s in samples), reverse=True)
++    ffd_bins: list[int] = []
++    for L in lens:
++        for i, b in enumerate(ffd_bins):
++            if b + L <= max_seq_len:
++                ffd_bins[i] = b + L
++                break
++        else:
++            ffd_bins.append(L)
++    W = max(1, num_train_workers)
++    n_bins = math.ceil(len(ffd_bins) / W) * W
++    order = sorted(samples, key=lambda x: -len(x[1].input_ids))
++    while True:
++        bins: list[list[tuple[int, MicroBatch]]] = [[] for _ in range(n_bins)]
++        fill = [0] * n_bins
++        ok = True
++        for idx, s in order:
++            L = len(s.input_ids)
++            for i in sorted(range(n_bins), key=lambda i: fill[i]):
++                if fill[i] + L <= max_seq_len:
++                    bins[i].append((idx, s))
++                    fill[i] += L
++                    break
++            else:
++                ok = False
++                break
++        if ok:
++            break
++        n_bins += W
++    merged: list[MicroBatch] = []
++    for group in bins:
++        if not group:
++            continue
++        first = copy.deepcopy(group[0][1])
++        first.lora_num_tokens = [0] * num_loras
++        first.lora_num_tokens[group[0][0]] += len(group[0][1].input_ids)
++        for idx, s in group[1:]:
++            first.input_ids.extend(s.input_ids)
++            first.loss_mask.extend(s.loss_mask)
++            first.advantages.extend(s.advantages)
++            first.inference_logprobs.extend(s.inference_logprobs)
++            first.temperatures.extend(s.temperatures)
++            if s.teacher_logprobs is not None and first.teacher_logprobs is not None:
++                first.teacher_logprobs.extend(s.teacher_logprobs)
++            if s.routed_experts is not None and first.routed_experts is not None:
++                first.routed_experts.extend(s.routed_experts)
++            first.position_ids.extend(s.position_ids)
++            first.env_names.extend(s.env_names)
++            first.lora_num_tokens[idx] += len(s.input_ids)
++        merged.append(first)
++    while len(merged) < n_bins:  # empty bins (rare): tiny dummies keep counts equal
++        merged.append(_make_dummy_batch(merged[0]))
++    merged.sort(key=lambda b: -len(b.input_ids))
++    out: list[MicroBatch] = []
++    for r in range(0, len(merged), W):
++        row = merged[r:r + W]
++        if (r // W) % 2 == 1:
++            row = row[::-1]
++        out.extend(row)
++    return out
++
++
+ def prepare_batch(
+     rollouts: list[TrainingSample],
+     seq_len: int,
+@@ -231,6 +351,14 @@ def prepare_batch(
+     """
+     all_samples = [(idx, prepare_sample(rollout, seq_len)) for idx, rollout in zip(idxs, rollouts)]
+ 
++    balanced = _balance_text_micro_batches(all_samples, seq_len, num_train_workers, num_loras)
++    if balanced:
++        micro_batches = [pad_micro_batch(mb, pad_to_multiple_of) for mb in balanced]
++        assert len(micro_batches) % num_train_workers == 0
++        batches_per_gpu: list[list[MicroBatch]] = [[] for _ in range(num_train_workers)]
++        for i, batch in enumerate(micro_batches):
++            batches_per_gpu[i % num_train_workers].append(batch)
++        return batches_per_gpu
+     micro_batches = packed_samples_into_micro_bs(all_samples, seq_len, num_loras)
+     micro_batches = [pad_micro_batch(micro_batch, pad_to_multiple_of) for micro_batch in micro_batches]
+ 
+diff --git a/tests/unit/orchestrator/test_batch.py b/tests/unit/orchestrator/test_batch.py
+index e01089ccf..1125af39a 100644
+--- a/tests/unit/orchestrator/test_batch.py
++++ b/tests/unit/orchestrator/test_batch.py
+@@ -183,3 +183,59 @@ def test_prepare_sample_none_routed_experts():
+ 
+     micro_batch = prepare_sample(sample, seq_len=8)
+     assert micro_batch.routed_experts is None
++
++
++def test_dummy_padding_batches_are_tiny(make_training_example):
++    """Rank-count padding must not cost a full micro batch of compute (fast-rlm speed finding)."""
++    from prime_rl.trainer.batch import DUMMY_BATCH_TOKENS
++
++    # 5 long samples (each ~ one bin) on 4 workers -> 5 bins + 3 dummies
++    examples = []
++    for _ in range(5):
++        ex = make_training_example()
++        ex.prompt_ids = [1] * 3000
++        ex.prompt_mask = [False] * 3000
++        ex.completion_ids = [2] * 1000
++        ex.completion_mask = [True] * 1000
++        ex.completion_logprobs = [-0.1] * 1000
++        ex.completion_temperatures = [1.0] * 1000
++        ex.teacher_logprobs = [0.0] * 4000
++        examples.append(ex)
++    batches_per_gpu = prepare_batch(rollouts=examples, seq_len=4096, num_train_workers=4, idxs=[0] * 5, num_loras=1)
++    assert all(len(w) == 2 for w in batches_per_gpu)
++    flat = [b for w in batches_per_gpu for b in w]
++    real = [b for b in flat if any(b.loss_mask)]
++    dummies = [b for b in flat if not any(b.loss_mask)]
++    assert len(real) == 5 and len(dummies) == 3
++    for d in dummies:
++        assert len(d.input_ids) == DUMMY_BATCH_TOKENS
++        for f in (d.loss_mask, d.advantages, d.inference_logprobs, d.position_ids, d.temperatures, d.env_names, d.teacher_logprobs):
++            assert len(f) == DUMMY_BATCH_TOKENS
++        assert d.position_ids == list(range(DUMMY_BATCH_TOKENS))
++        assert not any(d.loss_mask) and set(d.advantages) == {0.0}
++
++
++def test_balanced_packing_equalises_tokens_per_rank(make_training_example):
++    """32 samples of ~8k tokens on 4 ranks: FFD would give 9 bins (one rank 3 full bins); balanced gives 12
++    bins with near-equal tokens per rank and no full-size dummies."""
++    import random
++
++    rng = random.Random(0)
++    examples = []
++    for _ in range(32):
++        n = rng.randint(5000, 12000)
++        ex = make_training_example()
++        ex.prompt_ids = [1] * (n - 1000); ex.prompt_mask = [False] * (n - 1000)
++        ex.completion_ids = [2] * 1000; ex.completion_mask = [True] * 1000
++        ex.completion_logprobs = [-0.1] * 1000; ex.completion_temperatures = [1.0] * 1000
++        ex.teacher_logprobs = [0.0] * n
++        examples.append(ex)
++    total = sum(len(e.prompt_ids) + len(e.completion_ids) for e in examples)
++    per_gpu = prepare_batch(rollouts=examples, seq_len=32768, num_train_workers=4, idxs=[0] * 32, num_loras=1)
++    counts = [len(w) for w in per_gpu]
++    tokens = [sum(len(b.input_ids) for b in w) for w in per_gpu]
++    assert len(set(counts)) == 1                       # equal micro-batch counts per rank
++    assert sum(tokens) == total                        # nothing lost, no dummies needed
++    assert max(tokens) <= 1.15 * total / 4             # balanced within 15 % of the ideal share
++    assert all(len(b.input_ids) <= 32768 for w in per_gpu for b in w)
++    assert sum(sum(b.loss_mask) for w in per_gpu for b in w) == 32 * 1000

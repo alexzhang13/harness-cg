@@ -1,0 +1,115 @@
+# Fig. length-gen | base Transformer (single turn) | Ada-LEval BestAnswer (8k -> 128k)
+
+output_dir = "outputs/length-gen/transformer/adaleval"
+max_steps = 150
+seq_len = 16384
+
+[model]
+name = "Qwen/Qwen3-30B-A3B-Instruct-2507"
+
+[wandb]
+project = "rlm-lengthgen"
+name = "lengthgen-adaleval-bestanswer-singleturn-8k-to-128k"
+shared = false
+
+[deployment]
+gpus_per_node = 8
+num_train_gpus = 4
+num_infer_gpus = 4
+
+[trainer]
+
+[trainer.model]
+fused_lm_head_token_chunk_size = "auto"
+optimization_dtype = "bfloat16"
+reduce_dtype = "bfloat16"
+
+[trainer.model.ac]
+mode = "full"
+freq = 1
+
+[trainer.model.lora]
+rank = 32
+alpha = 64
+dropout = 0.0
+target_modules = [
+    "q_proj", "k_proj", "v_proj", "o_proj",
+    "gate_proj", "up_proj", "down_proj",
+]
+
+[trainer.ckpt]
+interval = 20
+keep_last = 1
+
+[trainer.optim]
+lr = 5e-5
+
+[inference]
+gpu_memory_utilization = 0.85
+
+[inference.model]
+max_model_len = 139264
+enforce_eager = false
+
+[inference.parallel]
+tp = 2
+dp = 2
+
+[orchestrator]
+batch_size = 64
+rollouts_per_example = 4
+
+[[orchestrator.filters]]
+type = "gibberish"
+enforce = false
+
+[[orchestrator.filters]]
+type = "repetition"
+enforce = false
+window = 3000
+prob_threshold = 0.99
+
+[[orchestrator.filters]]
+type = "zero_advantage"
+enforce = false
+
+[orchestrator.ckpt]
+interval = 20
+keep_last = 1
+
+[orchestrator.train.sampling]
+max_completion_tokens = 4096
+extra_body = { enable_thinking = false }
+
+[[orchestrator.train.env]]
+id = "singleturn-baseline"
+name = "adaleval-bestanswer-singleturn-8k-train"
+ratio = 1.0
+
+[orchestrator.train.env.args]
+task = "ada_leval_bestanswer"
+setting = "8k"
+num_examples = -1
+manifest_split = "train"
+
+[orchestrator.eval]
+interval = 10
+eval_base_model = true
+num_examples = 50
+rollouts_per_example = 1
+
+[orchestrator.eval.sampling]
+max_completion_tokens = 4096
+extra_body = { enable_thinking = false }
+
+[[orchestrator.eval.env]]
+id = "singleturn-baseline"
+name = "adaleval-bestanswer-singleturn-128k-eval"
+num_examples = 50
+rollouts_per_example = 1
+
+[orchestrator.eval.env.args]
+task = "ada_leval_bestanswer"
+setting = "128k"
+num_examples = 50
+manifest_split = "eval"

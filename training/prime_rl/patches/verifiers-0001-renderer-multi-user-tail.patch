@@ -1,0 +1,21 @@
+--- a/verifiers/clients/renderer_client.py	2026-11-11 22:33:59.206526735 +0000
++++ b/verifiers/clients/renderer_client.py	2026-11-11 22:34:12.169179237 +0000
+@@ -8,6 +8,7 @@
+ concurrent rollouts tokenize in parallel instead of blocking the event loop.
+ """
+ 
++import os
+ import asyncio
+ import json
+ import threading
+@@ -254,6 +255,10 @@
+         return False
+ 
+     roles = [_message_role(message) for message in messages]
++    # RLM_MULTI_USER_TAIL=1: a tail of several user messages (the RLM env appends the REPL output and then the
++    # turn prompt) extends the previous turn's tokens instead of forcing a full re-render.
++    if os.environ.get("RLM_MULTI_USER_TAIL") == "1":
++        return roles[-1] == "user" and all(role in ("tool", "user") for role in roles[:-1])
+     if roles[-1] == "user":
+         return all(role == "tool" for role in roles[:-1])
+     return all(role == "tool" for role in roles)

@@ -1,0 +1,25 @@
+[project]
+name = "longreason-real"
+version = "0.1.0"
+description = "LongReason length-controlled long-context MCQ, wired through RLMTrainEnv."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "rlm-train",
+    "verifiers>=0.1.11",
+    "datasets>=4.0",
+    "huggingface-hub>=0.20",
+]
+
+[tool.uv.sources]
+rlm-train = { path = "../../..", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["longreason_real"]
+
+[project.entry-points."verifiers.environments"]
+longreason-real = "longreason_real:load_environment"

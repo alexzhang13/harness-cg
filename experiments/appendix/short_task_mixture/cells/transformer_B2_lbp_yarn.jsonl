@@ -1,0 +1,1 @@
+{"label": "lg:LongBenchPro-w295k", "task": "longbenchpro", "args": {"language": "English", "token_length": "256k", "thinking": false, "seed": 42}, "num_examples": 115}
